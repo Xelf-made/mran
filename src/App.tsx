@@ -14,6 +14,10 @@ import { AdminLoginPage } from '@/pages/AdminLogin';
 import { TrackPage } from '@/pages/Track';
 import { AdminPage } from '@/pages/Admin';
 import { AccountPage } from '@/pages/Account';
+import { PrescriptionsPage } from '@/pages/PrescriptionsPublic';
+import { HealthAdvicePage } from '@/pages/HealthAdvice';
+import { BranchesPage } from '@/pages/Branches';
+import { OffersPage } from '@/pages/Offers';
 import { PharmacistLoginPage } from '@/pages/PharmacistLogin';
 import { PharmacistDashboard } from '@/pages/pharmacist/Dashboard';
 
@@ -33,6 +37,10 @@ export default function App() {
             <Route path="/admin-login" element={<AdminLoginPage />} />
             <Route path="/pharmacist-login" element={<PharmacistLoginPage />} />
             <Route path="/track" element={<TrackPage />} />
+            <Route path="/prescriptions" element={<PrescriptionsPage />} />
+            <Route path="/health-advice" element={<HealthAdvicePage />} />
+            <Route path="/branches" element={<BranchesPage />} />
+            <Route path="/offers" element={<OffersPage />} />
             <Route path="/account" element={<AccountPage />} />
             <Route path="/admin" element={<AdminPage />} />
             <Route path="/pharmacist" element={<PharmacistDashboard />} />

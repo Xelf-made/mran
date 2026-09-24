@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, type FormEvent } from 'react';
 import { Link, NavLink, useNavigate } from 'react-router-dom';
 import { BadgeCheck, ChevronDown, LogOut, Menu, MessageCircle, Phone, Search, ShoppingBag, ShieldCheck, Stethoscope, Truck, User, X } from 'lucide-react';
+import { PharmacistModal } from '@/components/PharmacistModal';
 import { useCart } from '@/contexts/cart-context';
 import { useAuth } from '@/contexts/useAuth';
 
@@ -15,10 +16,10 @@ const shopCategories = [
 ];
 
 const primaryNav = [
-  { label: 'Prescriptions', path: '/account' },
-  { label: 'Health Advice', path: '/track' },
-  { label: 'Branches', path: '/track' },
-  { label: 'Offers', path: '/products' },
+  { label: 'Prescriptions', path: '/prescriptions' },
+  { label: 'Health Advice', path: '/health-advice' },
+  { label: 'Branches', path: '/branches' },
+  { label: 'Offers', path: '/offers' },
 ];
 
 export function Navbar() {
@@ -27,6 +28,7 @@ export function Navbar() {
   const [open, setOpen] = useState(false);
   const [shopOpen, setShopOpen] = useState(false);
   const [mobileShopOpen, setMobileShopOpen] = useState(false);
+  const [pharmacistOpen, setPharmacistOpen] = useState(false);
   const [query, setQuery] = useState('');
   const navigate = useNavigate();
   const shopRef = useRef<HTMLDivElement>(null);
@@ -60,7 +62,7 @@ export function Navbar() {
           <Link to="/" className="logo" aria-label="Moran Pharmacy home"><img src="/WhatsApp_Image_2026-08-18_at_08.58.25.jpeg" alt="Moran Pharmacy" className="logo__img" /></Link>
           <form className="header__search" onSubmit={submit}><Search size={17} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search medicines, symptoms or brands" aria-label="Search products" /></form>
           <div className="header__icons">
-            <a href="https://wa.me/254700123456" target="_blank" rel="noreferrer" className="icon-btn header__chat header__pharmacist-btn"><MessageCircle size={19} /><span className="icon-btn__label">Ask a Pharmacist</span></a>
+            <button className="icon-btn header__chat header__pharmacist-btn" onClick={() => setPharmacistOpen(true)}><MessageCircle size={19} /><span className="icon-btn__label">Ask a Pharmacist</span></button>
             {user || demoUser ? (<>
               <Link to={isAdmin ? '/admin' : isPharmacist ? '/pharmacist' : '/account'} className="icon-btn" aria-label={isAdmin ? 'Admin dashboard' : isPharmacist ? 'Pharmacist portal' : 'My account'}>{isAdmin ? <ShieldCheck size={19} /> : isPharmacist ? <Stethoscope size={19} /> : <User size={19} />}<span className="icon-btn__label">{isAdmin ? 'Admin' : isPharmacist ? 'Rx Portal' : 'Account'}</span></Link>
               <button className="icon-btn" onClick={handleSignOut} aria-label="Sign out"><LogOut size={19} /><span className="icon-btn__label">Sign out</span></button>
@@ -133,6 +135,7 @@ export function Navbar() {
           </div>
         </nav>
       </header>
+      <PharmacistModal open={pharmacistOpen} onClose={() => setPharmacistOpen(false)} />
     </>
   );
 }
