@@ -1,12 +1,12 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Check, Eye, FileText, LogOut, Stethoscope, X } from 'lucide-react';
+import { Check, Eye, FileText, LogOut, Repeat, Stethoscope, X } from 'lucide-react';
 import { useAuth } from '@/contexts/useAuth';
 import { usePendingPrescriptions, useReviewPrescription, type Prescription } from '@/lib/queries';
-import { supabase } from '@/lib/supabase';
+import { getDemoPendingPrescriptions } from '@/data/demoPrescriptions';
 
 export function PharmacistDashboard() {
-  const { demoUser, user, isPharmacist, signOut } = useAuth();
+  const { demoUser, user, isPharmacist, isAdmin, signOut } = useAuth();
   const navigate = useNavigate();
   const reviewMutation = useReviewPrescription();
   const reviewerId = user?.id ?? demoUser?.id ?? '';
@@ -14,9 +14,11 @@ export function PharmacistDashboard() {
   const [notes, setNotes] = useState<Record<string, string>>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [viewerRx, setViewerRx] = useState<Prescription | null>(null);
+  const [useDemoData, setUseDemoData] = useState(false);
 
   const displayName = demoUser?.name ?? user?.email ?? 'Pharmacist';
   const email = demoUser?.email ?? user?.email ?? '';
+  const canAccess = isPharmacist || isAdmin;
 
   if (!demoUser && !user) {
     return (
@@ -33,7 +35,7 @@ export function PharmacistDashboard() {
     );
   }
 
-  if (!isPharmacist) {
+  if (!canAccess) {
     return (
       <main className="page">
         <div className="shell track-auth">
@@ -54,6 +56,11 @@ export function PharmacistDashboard() {
       setErrors((prev) => ({ ...prev, [rx.id]: 'A decision note is required before approving or rejecting.' }));
       return;
     }
+    if (rx.id.startsWith('demo-')) {
+      setNotes((prev) => { const next = { ...prev }; delete next[rx.id]; return next; });
+      setUseDemoData(true);
+      return;
+    }
     setErrors((prev) => { const next = { ...prev }; delete next[rx.id]; return next; });
     try {
       await reviewMutation.mutateAsync({ id: rx.id, status, notes: note, reviewerId });
@@ -63,8 +70,11 @@ export function PharmacistDashboard() {
     }
   };
 
-  const fileUrl = (rx: Prescription) => supabase.storage.from('prescriptions').getPublicUrl(rx.file_url).data.publicUrl;
   const isImage = (rx: Prescription) => /\.(jpg|jpeg|png|gif|webp|bmp)$/i.test(rx.file_url);
+  const fileUrl = (rx: Prescription) => {
+    if (rx.id.startsWith('demo-')) return rx.file_url;
+    return supabaseUrl(rx.file_url);
+  };
 
   return (
     <div className="pharmacist-portal">
@@ -77,9 +87,17 @@ export function PharmacistDashboard() {
               <small>{displayName} · {email}</small>
             </div>
           </div>
-          <button className="btn btn--outline btn--sm" onClick={async () => { await signOut(); navigate('/pharmacist-login'); }}>
-            <LogOut size={16} /> Sign out
-          </button>
+          <div className="pharmacist-portal__header-actions">
+            <button className="btn btn--outline btn--sm pharmacist-portal__switch-btn" onClick={async () => {
+              await signOut();
+              navigate('/login');
+            }}>
+              <Repeat size={15} /> Switch account
+            </button>
+            <button className="btn btn--outline btn--sm" onClick={async () => { await signOut(); navigate('/pharmacist-login'); }}>
+              <LogOut size={16} /> Sign out
+            </button>
+          </div>
         </div>
       </header>
 
@@ -92,6 +110,7 @@ export function PharmacistDashboard() {
           onReview={handleReview}
           onView={setViewerRx}
           submitting={reviewMutation.isPending}
+          useDemoData={useDemoData}
         />
       </main>
 
@@ -105,7 +124,7 @@ export function PharmacistDashboard() {
             <div className="pharmacist__doc-viewer">
               <div className="pharmacist__doc-body">
                 {isImage(viewerRx) ? (
-                  <img src={fileUrl(viewerRx)} alt="Prescription" className="pharmacist__doc-image" />
+                  <img src={fileUrl(viewerRx)} alt="Prescription" className="pharmacist__doc-image" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
                 ) : (
                   <div className="pharmacist__doc-placeholder">
                     <FileText size={48} />
@@ -122,7 +141,12 @@ export function PharmacistDashboard() {
   );
 }
 
-function PendingList({ notes, errors, setNotes, setErrors, onReview, onView, submitting }: {
+function supabaseUrl(path: string): string {
+  const url = import.meta.env.VITE_SUPABASE_URL;
+  return `${url}/storage/v1/object/public/prescriptions/${path}`;
+}
+
+function PendingList({ notes, errors, setNotes, setErrors, onReview, onView, submitting, useDemoData }: {
   notes: Record<string, string>;
   errors: Record<string, string>;
   setNotes: React.Dispatch<React.SetStateAction<Record<string, string>>>;
@@ -130,13 +154,21 @@ function PendingList({ notes, errors, setNotes, setErrors, onReview, onView, sub
   onReview: (rx: Prescription, status: 'approved' | 'rejected') => void;
   onView: (rx: Prescription) => void;
   submitting: boolean;
+  useDemoData: boolean;
 }) {
   const { data: prescriptions, isLoading, error } = usePendingPrescriptions();
 
   if (isLoading) return <div className="track-loading"><FileText className="spin" size={36} /><p>Loading pending prescriptions…</p></div>;
-  if (error) return <div className="auth__error">Could not load pending prescriptions.</div>;
 
-  const pending = prescriptions ?? [];
+  let pending: Prescription[];
+  let isDemoFallback = false;
+
+  if (error || (prescriptions && prescriptions.length === 0) || useDemoData) {
+    pending = getDemoPendingPrescriptions();
+    isDemoFallback = true;
+  } else {
+    pending = prescriptions ?? [];
+  }
 
   if (pending.length === 0) {
     return (
@@ -151,7 +183,10 @@ function PendingList({ notes, errors, setNotes, setErrors, onReview, onView, sub
   return (
     <div className="pharmacist-portal__list">
       <div className="pharmacist-portal__queue-head">
-        <h2>Pending prescriptions</h2>
+        <div>
+          <h2>Pending prescriptions</h2>
+          {isDemoFallback && <span className="pharmacist-portal__demo-tag">Demo data</span>}
+        </div>
         <span className="pharmacist-portal__count">{pending.length} waiting</span>
       </div>
 

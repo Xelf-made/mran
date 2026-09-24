@@ -414,6 +414,12 @@ img { display: block; max-width: 100%; }
 .pharmacist-portal { min-height: 100vh; background: #f5f9ec; }
 .pharmacist-portal__header { background: #2b3b2a; border-bottom: 3px solid #4f8f21; }
 .pharmacist-portal__header-inner { display: flex; align-items: center; justify-content: space-between; padding: 16px 0; }
+.pharmacist-portal__header-actions { display: flex; gap: 10px; align-items: center; }
+.pharmacist-portal__switch-btn { border-color: rgba(255,255,255,.3); color: #b8d4a8; }
+.pharmacist-portal__switch-btn:hover { background: rgba(255,255,255,.1); color: #fff; }
+.pharmacist-portal__switch-btn + .btn--outline { border-color: rgba(255,255,255,.3); color: #fff; }
+.pharmacist-portal__switch-btn + .btn--outline:hover { background: rgba(255,255,255,.1); }
+.pharmacist-portal__demo-tag { display: inline-block; margin-left: 10px; padding: 2px 10px; border-radius: 6px; background: #fff3e6; color: #c4451a; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .05em; }
 .pharmacist-portal__brand { display: flex; align-items: center; gap: 12px; color: #fff; }
 .pharmacist-portal__brand svg { color: #7bc943; }
 .pharmacist-portal__brand strong { display: block; font-size: 18px; font-weight: 900; }

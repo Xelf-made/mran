@@ -29,7 +29,7 @@ function makeDemoUser(id: string, email: string, name: string, role: DemoRole): 
   return {
     id, email, name, role,
     get isAdmin() { return role === 'admin'; },
-    get isPharmacist() { return role === 'pharmacist' || role === 'admin'; },
+    get isPharmacist() { return role === 'pharmacist'; },
   } as DemoUser;
 }
 
@@ -73,7 +73,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const user = session?.user ?? null;
   const metaRole = user?.app_metadata?.role as string | undefined;
   const isAdmin = demoUser?.isAdmin ?? metaRole === 'admin';
-  const isPharmacist = demoUser?.isPharmacist ?? (metaRole === 'pharmacist' || metaRole === 'admin');
+  const isPharmacist = demoUser?.isPharmacist ?? metaRole === 'pharmacist';
 
   const signIn: AuthContextValue['signIn'] = async (email, password) => {
     if (email === DEMO_CUSTOMER.email && password === DEMO_PASSWORD) {
