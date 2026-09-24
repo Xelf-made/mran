@@ -402,6 +402,19 @@ img { display: block; max-width: 100%; }
 .order-card__summary { }
 .order-card__pay { margin-top: 8px; font-size: 12px; color: #4f8f21; font-weight: 700; }
 
+/* ===== Modal ===== */
+.modal-overlay { position: fixed; inset: 0; z-index: 100; display: flex; align-items: flex-start; justify-content: center; padding: 40px 20px; background: rgba(43,59,42,.45); overflow-y: auto; }
+.modal { width: 100%; max-width: 600px; background: #fff; border-radius: 16px; padding: 32px; box-shadow: 0 20px 60px rgba(0,0,0,.2); }
+.modal__head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; }
+.modal__head h3 { margin: 0; font-size: 22px; font-weight: 900; color: #2b3b2a; }
+.modal__close { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 8px; background: #f5f9ec; color: #5a704e; transition: background .2s, color .2s; }
+.modal__close:hover { background: #fff3ee; color: #c4451a; }
+
+/* Admin stat color variants */
+.admin-stat--pending .admin-stat__icon { background: #fff8e6; color: #a07c10; }
+.admin-stat--delivered .admin-stat__icon { background: #e6f5d8; color: #3a7010; }
+.admin-stat--cancelled .admin-stat__icon { background: #ffe6e6; color: #a02020; }
+
 /* ===== Admin dashboard ===== */
 .admin__stats { display: grid; grid-template-columns: repeat(6, 1fr); gap: 12px; margin-bottom: 32px; }
 .admin-stat { display: flex; align-items: center; gap: 12px; padding: 16px 18px; background: #fff; border: 1px solid #edf2e6; border-radius: 10px; cursor: pointer; transition: border-color .2s, transform .2s; }
