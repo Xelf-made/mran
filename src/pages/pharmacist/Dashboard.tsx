@@ -1,25 +1,26 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ClipboardCheck, Clock, FileText, LogOut, Pill, Stethoscope, X } from 'lucide-react';
+import { Check, Eye, FileText, LogOut, Stethoscope, X } from 'lucide-react';
 import { useAuth } from '@/contexts/useAuth';
-import { PageShell } from '@/components/PageShell';
-import { PendingReviews } from '@/pages/pharmacist/PendingReviews';
-import { ReviewHistory } from '@/pages/pharmacist/ReviewHistory';
-import { RxProducts } from '@/pages/pharmacist/RxProducts';
-
-type PharmacistTab = 'pending' | 'history' | 'rx-products';
+import { usePendingPrescriptions, useReviewPrescription, type Prescription } from '@/lib/queries';
+import { supabase } from '@/lib/supabase';
 
 export function PharmacistDashboard() {
   const { demoUser, user, isPharmacist, signOut } = useAuth();
   const navigate = useNavigate();
-  const [tab, setTab] = useState<PharmacistTab>('pending');
+  const reviewMutation = useReviewPrescription();
+  const reviewerId = user?.id ?? demoUser?.id ?? '';
+
+  const [notes, setNotes] = useState<Record<string, string>>({});
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [viewerRx, setViewerRx] = useState<Prescription | null>(null);
 
   const displayName = demoUser?.name ?? user?.email ?? 'Pharmacist';
   const email = demoUser?.email ?? user?.email ?? '';
 
   if (!demoUser && !user) {
     return (
-      <PageShell>
+      <main className="page">
         <div className="shell track-auth">
           <div className="track-auth__card">
             <Stethoscope size={42} />
@@ -28,13 +29,13 @@ export function PharmacistDashboard() {
             <Link to="/pharmacist-login" className="btn btn--primary">Pharmacist sign in</Link>
           </div>
         </div>
-      </PageShell>
+      </main>
     );
   }
 
   if (!isPharmacist) {
     return (
-      <PageShell>
+      <main className="page">
         <div className="shell track-auth">
           <div className="track-auth__card">
             <X size={42} />
@@ -43,49 +44,162 @@ export function PharmacistDashboard() {
             <Link to="/" className="btn btn--outline">Back to home</Link>
           </div>
         </div>
-      </PageShell>
+      </main>
     );
   }
 
-  const tabs: { id: PharmacistTab; label: string; icon: typeof Pill }[] = [
-    { id: 'pending', label: 'Pending Reviews', icon: Clock },
-    { id: 'history', label: 'Review History', icon: ClipboardCheck },
-    { id: 'rx-products', label: 'Rx Products', icon: Pill },
-  ];
+  const handleReview = async (rx: Prescription, status: 'approved' | 'rejected') => {
+    const note = (notes[rx.id] ?? '').trim();
+    if (!note) {
+      setErrors((prev) => ({ ...prev, [rx.id]: 'A decision note is required before approving or rejecting.' }));
+      return;
+    }
+    setErrors((prev) => { const next = { ...prev }; delete next[rx.id]; return next; });
+    try {
+      await reviewMutation.mutateAsync({ id: rx.id, status, notes: note, reviewerId });
+      setNotes((prev) => { const next = { ...prev }; delete next[rx.id]; return next; });
+    } catch {
+      setErrors((prev) => ({ ...prev, [rx.id]: `Could not ${status === 'approved' ? 'approve' : 'reject'} prescription. Please try again.` }));
+    }
+  };
+
+  const fileUrl = (rx: Prescription) => supabase.storage.from('prescriptions').getPublicUrl(rx.file_url).data.publicUrl;
+  const isImage = (rx: Prescription) => /\.(jpg|jpeg|png|gif|webp|bmp)$/i.test(rx.file_url);
 
   return (
-    <PageShell>
-      <section className="shell admin">
-        <div className="track__head">
-          <div>
-            <span className="eyebrow"><Stethoscope size={14} /> Pharmacist portal</span>
-            <h1>Prescription review workspace</h1>
-            <p className="track__welcome">{displayName} · {email}</p>
+    <div className="pharmacist-portal">
+      <header className="pharmacist-portal__header">
+        <div className="shell pharmacist-portal__header-inner">
+          <div className="pharmacist-portal__brand">
+            <Stethoscope size={24} />
+            <div>
+              <strong>Prescription Verification</strong>
+              <small>{displayName} · {email}</small>
+            </div>
           </div>
-          <button className="btn btn--outline track__signout" onClick={async () => { await signOut(); navigate('/'); }}>
+          <button className="btn btn--outline btn--sm" onClick={async () => { await signOut(); navigate('/pharmacist-login'); }}>
             <LogOut size={16} /> Sign out
           </button>
         </div>
+      </header>
 
-        <div className="account__layout account__layout--admin">
-          <aside className="account__sidebar">
-            {tabs.map((item) => (
-              <button
-                key={item.id}
-                className={`account__tab ${tab === item.id ? 'account__tab--active' : ''}`}
-                onClick={() => setTab(item.id)}
-              >
-                <item.icon size={18} /> {item.label}
-              </button>
-            ))}
-          </aside>
-          <div className="account__content">
-            {tab === 'pending' && <PendingReviews />}
-            {tab === 'history' && <ReviewHistory />}
-            {tab === 'rx-products' && <RxProducts />}
+      <main className="shell pharmacist-portal__main">
+        <PendingList
+          notes={notes}
+          errors={errors}
+          setNotes={setNotes}
+          setErrors={setErrors}
+          onReview={handleReview}
+          onView={setViewerRx}
+          submitting={reviewMutation.isPending}
+        />
+      </main>
+
+      {viewerRx && (
+        <div className="modal-overlay" onClick={() => setViewerRx(null)}>
+          <div className="modal modal--wide" onClick={(e) => e.stopPropagation()}>
+            <div className="modal__head">
+              <h3>{viewerRx.file_name || 'Prescription document'}</h3>
+              <button className="modal__close" onClick={() => setViewerRx(null)}><X size={20} /></button>
+            </div>
+            <div className="pharmacist__doc-viewer">
+              <div className="pharmacist__doc-body">
+                {isImage(viewerRx) ? (
+                  <img src={fileUrl(viewerRx)} alt="Prescription" className="pharmacist__doc-image" />
+                ) : (
+                  <div className="pharmacist__doc-placeholder">
+                    <FileText size={48} />
+                    <p>Preview not available for this file type.</p>
+                    <a href={fileUrl(viewerRx)} target="_blank" rel="noreferrer" className="btn btn--outline btn--sm">Open file</a>
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         </div>
-      </section>
-    </PageShell>
+      )}
+    </div>
+  );
+}
+
+function PendingList({ notes, errors, setNotes, setErrors, onReview, onView, submitting }: {
+  notes: Record<string, string>;
+  errors: Record<string, string>;
+  setNotes: React.Dispatch<React.SetStateAction<Record<string, string>>>;
+  setErrors: React.Dispatch<React.SetStateAction<Record<string, string>>>;
+  onReview: (rx: Prescription, status: 'approved' | 'rejected') => void;
+  onView: (rx: Prescription) => void;
+  submitting: boolean;
+}) {
+  const { data: prescriptions, isLoading, error } = usePendingPrescriptions();
+
+  if (isLoading) return <div className="track-loading"><FileText className="spin" size={36} /><p>Loading pending prescriptions…</p></div>;
+  if (error) return <div className="auth__error">Could not load pending prescriptions.</div>;
+
+  const pending = prescriptions ?? [];
+
+  if (pending.length === 0) {
+    return (
+      <div className="track__empty">
+        <Check size={42} />
+        <h3>All caught up!</h3>
+        <p>There are no prescriptions waiting for review.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="pharmacist-portal__list">
+      <div className="pharmacist-portal__queue-head">
+        <h2>Pending prescriptions</h2>
+        <span className="pharmacist-portal__count">{pending.length} waiting</span>
+      </div>
+
+      {pending.map((rx) => (
+        <div className="rx-card" key={rx.id}>
+          <div className="rx-card__top">
+            <div className="rx-card__customer">
+              <strong>{rx.profile?.full_name ?? 'Unknown customer'}</strong>
+              <span>{rx.profile?.phone ?? 'No phone on file'}</span>
+              <span>{rx.profile?.area ?? 'Area not specified'}</span>
+            </div>
+            <div className="rx-card__meta">
+              <span className="rx-card__time">{new Date(rx.created_at).toLocaleString('en-KE', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+              <button className="btn btn--outline btn--sm" onClick={() => onView(rx)}>
+                <Eye size={15} /> View document
+              </button>
+            </div>
+          </div>
+
+          <div className="rx-card__doc-info">
+            <FileText size={16} />
+            <span>{rx.file_name || 'Prescription file'}</span>
+          </div>
+
+          <div className="rx-card__decision">
+            <label className="rx-card__note-label">
+              <span>Decision note <em>(required)</em></span>
+              <textarea
+                value={notes[rx.id] ?? ''}
+                onChange={(e) => setNotes((prev) => ({ ...prev, [rx.id]: e.target.value }))}
+                onFocus={() => setErrors((prev) => { const next = { ...prev }; delete next[rx.id]; return next; })}
+                placeholder="e.g. Approved — dosage matches prescription. 500mg twice daily for 7 days."
+                rows={2}
+                className="rx-card__note-input"
+              />
+            </label>
+            {errors[rx.id] && <div className="auth__error rx-card__error">{errors[rx.id]}</div>}
+            <div className="rx-card__actions">
+              <button className="btn btn--primary" disabled={submitting} onClick={() => onReview(rx, 'approved')}>
+                <Check size={16} /> Approve
+              </button>
+              <button className="btn btn--outline pharmacist__reject-btn" disabled={submitting} onClick={() => onReview(rx, 'rejected')}>
+                <X size={16} /> Reject
+              </button>
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
   );
 }

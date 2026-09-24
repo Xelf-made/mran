@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { Link, NavLink, useNavigate } from 'react-router-dom';
-import { BadgeCheck, LogOut, Menu, MessageCircle, Phone, Search, ShoppingBag, ShieldCheck, Truck, User, X } from 'lucide-react';
+import { BadgeCheck, LogOut, Menu, MessageCircle, Phone, Search, ShoppingBag, ShieldCheck, Stethoscope, Truck, User, X } from 'lucide-react';
 import { useCart } from '@/contexts/cart-context';
 import { useAuth } from '@/contexts/useAuth';
 
@@ -15,7 +15,7 @@ const navLinks = [
 
 export function Navbar() {
   const { count } = useCart();
-  const { user, demoUser, isAdmin, signOut } = useAuth();
+  const { user, demoUser, isAdmin, isPharmacist, signOut } = useAuth();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
   const navigate = useNavigate();
@@ -37,7 +37,7 @@ export function Navbar() {
           <div className="header__icons">
             <a href="https://wa.me/254700123456" target="_blank" rel="noreferrer" className="icon-btn header__chat"><MessageCircle size={19} /><span className="icon-btn__label">Pharmacist</span></a>
             {user || demoUser ? (<>
-              <Link to={isAdmin ? '/admin' : '/account'} className="icon-btn" aria-label={isAdmin ? 'Admin dashboard' : 'My account'}>{isAdmin ? <ShieldCheck size={19} /> : <User size={19} />}<span className="icon-btn__label">{isAdmin ? 'Admin' : 'Account'}</span></Link>
+              <Link to={isAdmin ? '/admin' : isPharmacist ? '/pharmacist' : '/account'} className="icon-btn" aria-label={isAdmin ? 'Admin dashboard' : isPharmacist ? 'Pharmacist portal' : 'My account'}>{isAdmin ? <ShieldCheck size={19} /> : isPharmacist ? <Stethoscope size={19} /> : <User size={19} />}<span className="icon-btn__label">{isAdmin ? 'Admin' : isPharmacist ? 'Rx Portal' : 'Account'}</span></Link>
               <button className="icon-btn" onClick={handleSignOut} aria-label="Sign out"><LogOut size={19} /><span className="icon-btn__label">Sign out</span></button>
             </>) : (<Link to="/login" className="icon-btn" aria-label="Sign in"><User size={19} /><span className="icon-btn__label">Sign in</span></Link>)}
             <Link to="/cart" className="icon-btn icon-btn--cart" aria-label="Cart"><ShoppingBag size={19} />{count > 0 && <span>{count}</span>}<span className="icon-btn__label">Cart</span></Link>

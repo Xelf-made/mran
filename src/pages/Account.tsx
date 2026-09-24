@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { ArrowRight, Bell, Check, CreditCard, Heart, LogOut, MapPin, Package, Settings, ShoppingBag, User as UserIcon } from 'lucide-react';
 import { useAuth } from '@/contexts/useAuth';
 import { PageShell } from '@/components/PageShell';
@@ -14,13 +14,17 @@ import { Notifications } from '@/pages/account/Notifications';
 type Tab = 'overview' | 'orders' | 'addresses' | 'payments' | 'wishlist' | 'profile' | 'notifications';
 
 export function AccountPage() {
-  const { demoUser, user, signOut } = useAuth();
+  const { demoUser, user, isPharmacist, signOut } = useAuth();
   const navigate = useNavigate();
   const [tab, setTab] = useState<Tab>('overview');
 
   const displayName = demoUser?.name ?? user?.email ?? 'Guest';
   const email = demoUser?.email ?? user?.email ?? '';
   const isDemo = Boolean(demoUser);
+
+  if (isPharmacist) {
+    return <Navigate to="/pharmacist" replace />;
+  }
 
   if (!demoUser && !user) {
     return (

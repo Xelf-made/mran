@@ -3,7 +3,6 @@ import { Link, useNavigate } from 'react-router-dom';
 import { ArrowRight, Eye, EyeOff, Lock, Mail, ShieldCheck, Stethoscope, Zap } from 'lucide-react';
 import { useAuth } from '@/contexts/useAuth';
 import { supabase } from '@/lib/supabase';
-import { PageShell } from '@/components/PageShell';
 import { AuthLayout } from '@/components/AuthForm';
 
 export function PharmacistLoginPage() {
@@ -55,7 +54,7 @@ export function PharmacistLoginPage() {
   };
 
   return (
-    <PageShell>
+    <main className="page">
       <AuthLayout>
         <div className="auth">
           <div className="auth__card">
@@ -101,6 +100,6 @@ export function PharmacistLoginPage() {
           </div>
         </div>
       </AuthLayout>
-    </PageShell>
+    </main>
   );
 }

@@ -2,6 +2,7 @@ import { useState, type FormEvent, type ReactNode } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ArrowRight, Eye, EyeOff, Lock, Mail, ShieldCheck, User, Zap } from 'lucide-react';
 import { useAuth } from '@/contexts/useAuth';
+import { supabase } from '@/lib/supabase';
 
 export function AuthForm({ mode, adminMode }: { mode: 'login' | 'signup'; adminMode?: boolean }) {
   const { signIn, signUp } = useAuth();
@@ -25,7 +26,12 @@ export function AuthForm({ mode, adminMode }: { mode: 'login' | 'signup'; adminM
     } else {
       const { error: signInError } = await signIn(email, password);
       if (signInError) { setError(signInError); setLoading(false); return; }
-      navigate(adminMode ? '/admin' : '/account');
+      if (adminMode) { navigate('/admin'); return; }
+      if (email === 'pharmacist@moran.co.ke') { navigate('/pharmacist'); return; }
+      const { data: sessionData } = await supabase.auth.getSession();
+      const metaRole = sessionData.session?.user?.app_metadata?.role as string | undefined;
+      if (metaRole === 'pharmacist') { navigate('/pharmacist'); return; }
+      navigate('/account');
     }
   };
 
