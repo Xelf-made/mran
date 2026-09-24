@@ -14,6 +14,8 @@ import { AdminLoginPage } from '@/pages/AdminLogin';
 import { TrackPage } from '@/pages/Track';
 import { AdminPage } from '@/pages/Admin';
 import { AccountPage } from '@/pages/Account';
+import { PharmacistLoginPage } from '@/pages/PharmacistLogin';
+import { PharmacistDashboard } from '@/pages/pharmacist/Dashboard';
 
 export default function App() {
   return (
@@ -29,9 +31,11 @@ export default function App() {
             <Route path="/login" element={<LoginPage />} />
             <Route path="/signup" element={<SignupPage />} />
             <Route path="/admin-login" element={<AdminLoginPage />} />
+            <Route path="/pharmacist-login" element={<PharmacistLoginPage />} />
             <Route path="/track" element={<TrackPage />} />
             <Route path="/account" element={<AccountPage />} />
             <Route path="/admin" element={<AdminPage />} />
+            <Route path="/pharmacist" element={<PharmacistDashboard />} />
           </Routes>
         </CartProvider>
       </AuthProvider>

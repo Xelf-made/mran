@@ -20,6 +20,11 @@ export const queryKeys = {
   paymentMethods: (userId: string) => ['payment-methods', userId] as const,
   wishlist: (userId: string) => ['wishlist', userId] as const,
   profile: (userId: string) => ['profile', userId] as const,
+  prescriptions: ['prescriptions'] as const,
+  pendingPrescriptions: ['prescriptions', 'pending'] as const,
+  reviewedPrescriptions: ['prescriptions', 'reviewed'] as const,
+  customerPrescriptions: (userId: string) => ['prescriptions', 'customer', userId] as const,
+  rxProducts: ['products', 'rx'] as const,
 };
 
 /*
@@ -37,6 +42,8 @@ const ADDRESS_COLUMNS = 'id, user_id, label, name, phone, line1, area, city, is_
 const PAYMENT_COLUMNS = 'id, user_id, type, label, detail, is_default, created_at';
 const WISHLET_COLUMNS = 'id, user_id, product_id, created_at';
 const ORDER_CUSTOMER_FULL_COLUMNS = 'id, order_number, status, total, delivery_fee, payment_method, items, delivery_name, delivery_phone, delivery_address, delivery_area, created_at';
+const PRESCRIPTION_COLUMNS = 'id, user_id, file_url, file_name, status, pharmacist_notes, reviewed_by, created_at, updated_at';
+const RX_PRODUCT_COLUMNS = 'id, name, brand, category, price, image, stock, prescription, description';
 
 /*
  * Public product catalog query — cached for 10 minutes (staleTime set globally
@@ -531,3 +538,131 @@ export function useUpdateProfile(userId: string) {
     onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.profile(userId) }),
   });
 }
+
+/*
+ * Pharmacist portal hooks
+ */
+
+export type PrescriptionStatus = 'pending' | 'approved' | 'rejected';
+
+export interface Prescription {
+  id: string;
+  user_id: string;
+  file_url: string;
+  file_name: string;
+  status: PrescriptionStatus;
+  pharmacist_notes: string | null;
+  reviewed_by: string | null;
+  created_at: string;
+  updated_at: string;
+  profile?: { full_name: string | null; phone: string | null; area: string | null } | null;
+}
+
+export interface RxProduct {
+  id: number;
+  name: string;
+  brand: string;
+  category: string;
+  price: number;
+  image: string;
+  stock: number;
+  prescription: boolean;
+  description: string;
+}
+
+const PRESCRIPTION_PROFILE_JOIN = `${PRESCRIPTION_COLUMNS}, profile:profiles!user_id(full_name, phone, area)`;
+
+export function usePendingPrescriptions() {
+  return useQuery({
+    queryKey: queryKeys.pendingPrescriptions,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('prescriptions')
+        .select(PRESCRIPTION_PROFILE_JOIN)
+        .eq('status', 'pending')
+        .order('created_at', { ascending: true });
+      if (error) throw error;
+      return (data ?? []) as unknown as Prescription[];
+    },
+    staleTime: 15 * 1000,
+  });
+}
+
+export function useReviewedPrescriptions() {
+  return useQuery({
+    queryKey: queryKeys.reviewedPrescriptions,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('prescriptions')
+        .select(PRESCRIPTION_PROFILE_JOIN)
+        .in('status', ['approved', 'rejected'])
+        .order('updated_at', { ascending: false });
+      if (error) throw error;
+      return (data ?? []) as unknown as Prescription[];
+    },
+    staleTime: 30 * 1000,
+  });
+}
+
+export function useCustomerPrescriptions(userId: string) {
+  return useQuery({
+    queryKey: queryKeys.customerPrescriptions(userId),
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('prescriptions')
+        .select(PRESCRIPTION_COLUMNS)
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      return (data ?? []) as Prescription[];
+    },
+    staleTime: 30 * 1000,
+    enabled: !!userId,
+  });
+}
+
+export function useReviewPrescription() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, status, notes, reviewerId }: {
+      id: string;
+      status: PrescriptionStatus;
+      notes?: string;
+      reviewerId: string;
+    }) => {
+      const { error } = await supabase
+        .from('prescriptions')
+        .update({
+          status,
+          pharmacist_notes: notes ?? null,
+          reviewed_by: reviewerId,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: (_data, variables) => {
+      qc.invalidateQueries({ queryKey: queryKeys.pendingPrescriptions });
+      qc.invalidateQueries({ queryKey: queryKeys.reviewedPrescriptions });
+      qc.invalidateQueries({ queryKey: queryKeys.customerPrescriptions(variables.reviewerId) });
+      qc.invalidateQueries({ queryKey: ['prescriptions'] });
+    },
+  });
+}
+
+export function useRxProducts() {
+  return useQuery({
+    queryKey: queryKeys.rxProducts,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('products')
+        .select(RX_PRODUCT_COLUMNS)
+        .eq('prescription', true)
+        .order('name', { ascending: true });
+      if (error) throw error;
+      return (data ?? []) as RxProduct[];
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+}
+

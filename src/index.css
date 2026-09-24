@@ -410,6 +410,27 @@ img { display: block; max-width: 100%; }
 .modal__close { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 8px; background: #f5f9ec; color: #5a704e; transition: background .2s, color .2s; }
 .modal__close:hover { background: #fff3ee; color: #c4451a; }
 
+/* Pharmacist portal */
+.modal--wide { max-width: 900px; }
+.pharmacist__review-grid { display: grid; grid-template-columns: 1fr 320px; gap: 24px; }
+.pharmacist__doc-viewer { border: 1px solid #edf2e6; border-radius: 12px; overflow: hidden; }
+.pharmacist__doc-header { display: flex; align-items: center; gap: 8px; padding: 12px 16px; background: #f5f9ec; font-size: 13px; font-weight: 700; color: #2b3b2a; border-bottom: 1px solid #edf2e6; }
+.pharmacist__doc-body { min-height: 300px; display: flex; align-items: center; justify-content: center; background: #fafdf5; }
+.pharmacist__doc-image { max-width: 100%; max-height: 500px; object-fit: contain; }
+.pharmacist__doc-placeholder { display: flex; flex-direction: column; align-items: center; gap: 12px; color: #94a884; padding: 40px; text-align: center; }
+.pharmacist__review-side { display: flex; flex-direction: column; gap: 16px; }
+.pharmacist__customer-card { border: 1px solid #edf2e6; border-radius: 12px; padding: 16px; }
+.pharmacist__customer-head { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 800; color: #2b3b2a; margin-bottom: 12px; }
+.pharmacist__customer-row { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px solid #f5f9ec; font-size: 13px; }
+.pharmacist__customer-row:last-child { border-bottom: none; }
+.pharmacist__customer-row span { color: #94a884; }
+.pharmacist__customer-row strong { color: #2b3b2a; }
+.pharmacist__review-actions { display: flex; gap: 12px; }
+.pharmacist__review-actions .btn { flex: 1; justify-content: center; }
+.pharmacist__reject-btn { border-color: #c4451a; color: #c4451a; }
+.pharmacist__reject-btn:hover { background: #fff3ee; }
+
+
 /* Admin stat color variants */
 .admin-stat--pending .admin-stat__icon { background: #fff8e6; color: #a07c10; }
 .admin-stat--delivered .admin-stat__icon { background: #e6f5d8; color: #3a7010; }
