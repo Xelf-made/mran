@@ -12,9 +12,14 @@ export const queryKeys = {
   productDetail: (id: number) => ['products', 'detail', id] as const,
   orders: ['orders'] as const,
   ordersList: (page: number, limit: number) => ['orders', 'list', page, limit] as const,
+  customerOrders: (userId: string) => ['orders', 'customer', userId] as const,
   customers: ['customers'] as const,
   storeSettings: ['store-settings'] as const,
   customerCount: ['customers', 'count'] as const,
+  addresses: (userId: string) => ['addresses', userId] as const,
+  paymentMethods: (userId: string) => ['payment-methods', userId] as const,
+  wishlist: (userId: string) => ['wishlist', userId] as const,
+  profile: (userId: string) => ['profile', userId] as const,
 };
 
 /*
@@ -28,6 +33,10 @@ const ORDER_ANALYTICS_COLUMNS = 'id, order_number, status, total, items, deliver
 const PRODUCT_STOCK_COLUMNS = 'id, name, stock, sales';
 const PROFILE_COLUMNS = 'id, full_name, phone, area, created_at';
 const ORDER_CUSTOMER_COLUMNS = 'user_id, total, status, delivery_area';
+const ADDRESS_COLUMNS = 'id, user_id, label, name, phone, line1, area, city, is_default, created_at';
+const PAYMENT_COLUMNS = 'id, user_id, type, label, detail, is_default, created_at';
+const WISHLET_COLUMNS = 'id, user_id, product_id, created_at';
+const ORDER_CUSTOMER_FULL_COLUMNS = 'id, order_number, status, total, delivery_fee, payment_method, items, delivery_name, delivery_phone, delivery_address, delivery_area, created_at';
 
 /*
  * Public product catalog query — cached for 10 minutes (staleTime set globally
@@ -280,5 +289,245 @@ export function useSaveSettings() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: queryKeys.storeSettings });
     },
+  });
+}
+
+/*
+ * Customer-facing hooks
+ */
+
+export interface CustomerAddress {
+  id: string;
+  user_id: string;
+  label: string;
+  name: string;
+  phone: string;
+  line1: string;
+  area: string;
+  city: string;
+  is_default: boolean;
+  created_at: string;
+}
+
+export interface CustomerPaymentMethod {
+  id: string;
+  user_id: string;
+  type: 'mpesa' | 'card';
+  label: string;
+  detail: string;
+  is_default: boolean;
+  created_at: string;
+}
+
+export interface CustomerProfile {
+  id: string;
+  full_name: string | null;
+  phone: string | null;
+  area: string | null;
+  created_at: string;
+}
+
+export interface WishlistItem {
+  id: string;
+  user_id: string;
+  product_id: number;
+  created_at: string;
+  product: {
+    id: number;
+    name: string;
+    brand: string;
+    price: number;
+    old_price: number | null;
+    image: string;
+    rating: number;
+    stock: number;
+  };
+}
+
+export function useCustomerOrders(userId: string) {
+  return useQuery({
+    queryKey: queryKeys.customerOrders(userId),
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('orders')
+        .select(ORDER_CUSTOMER_FULL_COLUMNS)
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      return data as AdminOrder[];
+    },
+    staleTime: 30 * 1000,
+    enabled: !!userId,
+  });
+}
+
+export function useAddresses(userId: string) {
+  return useQuery({
+    queryKey: queryKeys.addresses(userId),
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('addresses')
+        .select(ADDRESS_COLUMNS)
+        .eq('user_id', userId)
+        .order('created_at', { ascending: true });
+      if (error) throw error;
+      return data as CustomerAddress[];
+    },
+    staleTime: 60 * 1000,
+    enabled: !!userId,
+  });
+}
+
+export function useSaveAddress(userId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, payload }: { id: string | null; payload: Omit<CustomerAddress, 'id' | 'user_id' | 'created_at'> }) => {
+      if (id) {
+        const { error } = await supabase.from('addresses').update(payload).eq('id', id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from('addresses').insert({ ...payload, user_id: userId });
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.addresses(userId) }),
+  });
+}
+
+export function useDeleteAddress(userId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from('addresses').delete().eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.addresses(userId) }),
+  });
+}
+
+export function useSetDefaultAddress(userId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      await supabase.from('addresses').update({ is_default: false }).eq('user_id', userId);
+      const { error } = await supabase.from('addresses').update({ is_default: true }).eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.addresses(userId) }),
+  });
+}
+
+export function usePaymentMethods(userId: string) {
+  return useQuery({
+    queryKey: queryKeys.paymentMethods(userId),
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('payment_methods')
+        .select(PAYMENT_COLUMNS)
+        .eq('user_id', userId)
+        .order('created_at', { ascending: true });
+      if (error) throw error;
+      return data as CustomerPaymentMethod[];
+    },
+    staleTime: 60 * 1000,
+    enabled: !!userId,
+  });
+}
+
+export function useSavePaymentMethod(userId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, payload }: { id: string | null; payload: Omit<CustomerPaymentMethod, 'id' | 'user_id' | 'created_at'> }) => {
+      if (id) {
+        const { error } = await supabase.from('payment_methods').update(payload).eq('id', id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from('payment_methods').insert({ ...payload, user_id: userId });
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.paymentMethods(userId) }),
+  });
+}
+
+export function useDeletePaymentMethod(userId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from('payment_methods').delete().eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.paymentMethods(userId) }),
+  });
+}
+
+export function useSetDefaultPayment(userId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      await supabase.from('payment_methods').update({ is_default: false }).eq('user_id', userId);
+      const { error } = await supabase.from('payment_methods').update({ is_default: true }).eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.paymentMethods(userId) }),
+  });
+}
+
+export function useWishlist(userId: string) {
+  return useQuery({
+    queryKey: queryKeys.wishlist(userId),
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('wishlist')
+        .select(`${WISHLET_COLUMNS}, product:products(id, name, brand, price, old_price, image, rating, stock)`)
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      return (data ?? []) as unknown as WishlistItem[];
+    },
+    staleTime: 60 * 1000,
+    enabled: !!userId,
+  });
+}
+
+export function useRemoveWishlistItem(userId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from('wishlist').delete().eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.wishlist(userId) }),
+  });
+}
+
+export function useProfile(userId: string) {
+  return useQuery({
+    queryKey: queryKeys.profile(userId),
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select(PROFILE_COLUMNS)
+        .eq('id', userId)
+        .maybeSingle();
+      if (error) throw error;
+      return data as CustomerProfile | null;
+    },
+    staleTime: 60 * 1000,
+    enabled: !!userId,
+  });
+}
+
+export function useUpdateProfile(userId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (payload: { full_name: string; phone: string; area: string }) => {
+      const { error } = await supabase.from('profiles').update({
+        ...payload,
+        updated_at: new Date().toISOString(),
+      }).eq('id', userId);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.profile(userId) }),
   });
 }

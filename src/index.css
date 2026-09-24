@@ -487,6 +487,11 @@ img { display: block; max-width: 100%; }
 .account__section-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
 .account__section-head h3 { margin: 0; }
 
+/* Quick links */
+.account__quick-links { display: flex; gap: 12px; flex-wrap: wrap; }
+.account__quick-link { display: flex; align-items: center; gap: 10px; padding: 14px 20px; background: #fff; border: 1px solid #edf2e6; border-radius: 12px; font-size: 14px; font-weight: 700; color: #2b3b2a; text-decoration: none; transition: border-color .2s, box-shadow .2s; }
+.account__quick-link:hover { border-color: #b8d4a8; box-shadow: 0 4px 12px rgba(43,59,42,.08); }
+
 /* Recent order card */
 .account__recent-order { display: flex; align-items: center; gap: 16px; padding: 18px; background: #fff; border: 1px solid #edf2e6; border-radius: 12px; }
 .account__recent-info { flex: 1; display: flex; flex-direction: column; gap: 3px; }
