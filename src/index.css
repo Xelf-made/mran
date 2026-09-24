@@ -64,10 +64,34 @@ img { display: block; max-width: 100%; }
 .main-nav { border-top: 1px solid #edf2e6; background: #fff; }
 .main-nav--open { display: block; }
 .main-nav__inner { display: flex; align-items: center; gap: 32px; min-height: 48px; }
-.main-nav__link { font-size: 13px; font-weight: 700; color: #5a704e; position: relative; padding: 14px 0; transition: color .2s; }
+.main-nav__link { font-size: 13px; font-weight: 700; color: #5a704e; position: relative; padding: 14px 0; transition: color .2s; cursor: pointer; background: none; border: none; font-family: inherit; display: flex; align-items: center; gap: 4px; }
 .main-nav__link::after { content: ''; position: absolute; bottom: 0; left: 0; width: 0; height: 3px; border-radius: 3px 3px 0 0; background: #7bc943; transition: width .3s ease; }
 .main-nav__link:hover, .main-nav__link--active { color: #4f8f21; }
 .main-nav__link:hover::after, .main-nav__link--active::after { width: 100%; }
+.main-nav__shop-btn { text-transform: none; }
+.main-nav__chevron { transition: transform .2s ease; }
+.main-nav__chevron--up { transform: rotate(180deg); }
+.main-nav__dropdown { position: relative; }
+.main-nav__mega { position: absolute; top: 100%; left: 0; min-width: 220px; background: #fff; border: 1px solid #edf2e6; border-radius: 10px; box-shadow: 0 8px 24px rgba(43,59,42,.12); padding: 8px; z-index: 60; animation: megaFade .18s ease; }
+@keyframes megaFade { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }
+.main-nav__mega-link { display: block; padding: 10px 14px; font-size: 13px; font-weight: 600; color: #5a704e; border-radius: 6px; transition: background .15s, color .15s; text-decoration: none; }
+.main-nav__mega-link:hover { background: #f5f9ec; color: #4f8f21; }
+
+/* Mobile navigation panel */
+.mobile-nav { display: none; }
+.mobile-nav--open { display: block; }
+.mobile-nav__inner { padding: 12px 0 20px; display: flex; flex-direction: column; gap: 2px; }
+.mobile-nav__search { position: relative; margin-bottom: 12px; }
+.mobile-nav__search > svg { position: absolute; top: 13px; left: 14px; color: #9bb28a; }
+.mobile-nav__search input { width: 100%; height: 44px; padding: 0 16px 0 42px; border: 1.5px solid #e0ead4; border-radius: 8px; background: #fafdf8; outline: none; font-size: 14px; color: #2b3b2a; }
+.mobile-nav__search input:focus { border-color: #7bc943; }
+.mobile-nav__expand { display: flex; align-items: center; justify-content: space-between; padding: 13px 0; font-size: 14px; font-weight: 700; color: #2b3b2a; background: none; border: none; border-bottom: 1px solid #edf2e6; cursor: pointer; font-family: inherit; }
+.mobile-nav__chevron--up { transform: rotate(180deg); }
+.mobile-nav__sub { display: flex; flex-direction: column; }
+.mobile-nav__sub-link { padding: 11px 18px; font-size: 13px; font-weight: 600; color: #5a704e; border-bottom: 1px solid #f2f6ec; text-decoration: none; transition: color .15s; }
+.mobile-nav__sub-link:hover { color: #4f8f21; }
+.mobile-nav__link { padding: 13px 0; font-size: 14px; font-weight: 700; color: #2b3b2a; border-bottom: 1px solid #edf2e6; text-decoration: none; transition: color .15s; }
+.mobile-nav__link:hover { color: #4f8f21; }
 
 /* ===== Hero ===== */
 .hero { position: relative; min-height: 82vh; display: flex; flex-direction: column; justify-content: center; background-position: center; background-size: cover; background-color: #e0ead4; }
@@ -721,12 +745,10 @@ img { display: block; max-width: 100%; }
   .shell { width: calc(100% - 28px); }
   .header__search { display: none; }
   .main-nav { display: none; }
-  .main-nav--open { display: block; }
-  .main-nav__inner { flex-direction: column; align-items: stretch; gap: 0; padding: 8px 0; }
-  .main-nav__link { padding: 13px 0; border-bottom: 1px solid #edf2e6; }
-  .main-nav__link::after { display: none; }
+  .main-nav--open { display: none; }
   .icon-btn__label { display: none; }
   .header__chat { padding: 10px; }
+  .header__pharmacist-btn .icon-btn__label { display: none; }
   .hero { min-height: 72vh; }
   .hero__content { padding: 56px 0; }
   .trust-strip__grid { grid-template-columns: 1fr 1fr; }

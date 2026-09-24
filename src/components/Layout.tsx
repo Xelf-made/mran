@@ -1,26 +1,51 @@
-import { useState, type FormEvent } from 'react';
+import { useState, useRef, useEffect, type FormEvent } from 'react';
 import { Link, NavLink, useNavigate } from 'react-router-dom';
-import { BadgeCheck, LogOut, Menu, MessageCircle, Phone, Search, ShoppingBag, ShieldCheck, Stethoscope, Truck, User, X } from 'lucide-react';
+import { BadgeCheck, ChevronDown, LogOut, Menu, MessageCircle, Phone, Search, ShoppingBag, ShieldCheck, Stethoscope, Truck, User, X } from 'lucide-react';
 import { useCart } from '@/contexts/cart-context';
 import { useAuth } from '@/contexts/useAuth';
 
-const navLinks = [
-  { label: 'All products', path: '/products' },
+const shopCategories = [
   { label: 'Medicines', path: '/products?category=Medicines' },
-  { label: 'Vitamins', path: '/products?category=Vitamins+%26+Supplements' },
-  { label: 'Personal care', path: '/products?category=Personal+Care' },
-  { label: 'Mother & baby', path: '/products?category=Mother+%26+Baby' },
-  { label: 'Devices', path: '/products?category=Medical+Devices' },
+  { label: 'Baby & Mother', path: '/products?category=Mother+%26+Baby' },
+  { label: 'Personal Care', path: '/products?category=Personal+Care' },
+  { label: 'Beauty & Skincare', path: '/products?category=Personal+Care' },
+  { label: 'Vitamins & Supplements', path: '/products?category=Vitamins+%26+Supplements' },
+  { label: 'Medical Devices', path: '/products?category=Medical+Devices' },
+  { label: 'Sexual Wellness', path: '/products?category=Wellness' },
+];
+
+const primaryNav = [
+  { label: 'Prescriptions', path: '/account' },
+  { label: 'Health Advice', path: '/track' },
+  { label: 'Branches', path: '/track' },
+  { label: 'Offers', path: '/products' },
 ];
 
 export function Navbar() {
   const { count } = useCart();
   const { user, demoUser, isAdmin, isPharmacist, signOut } = useAuth();
   const [open, setOpen] = useState(false);
+  const [shopOpen, setShopOpen] = useState(false);
+  const [mobileShopOpen, setMobileShopOpen] = useState(false);
   const [query, setQuery] = useState('');
   const navigate = useNavigate();
-  const submit = (event: FormEvent) => { event.preventDefault(); navigate(`/products${query.trim() ? `?q=${encodeURIComponent(query.trim())}` : ''}`); setOpen(false); };
+  const shopRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (shopRef.current && !shopRef.current.contains(e.target as Node)) setShopOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  const submit = (event: FormEvent) => {
+    event.preventDefault();
+    navigate(`/products${query.trim() ? `?q=${encodeURIComponent(query.trim())}` : ''}`);
+    setOpen(false);
+  };
   const handleSignOut = async () => { await signOut(); navigate('/'); };
+
   return (
     <>
       <div className="topbar">
@@ -35,7 +60,7 @@ export function Navbar() {
           <Link to="/" className="logo" aria-label="Moran Pharmacy home"><img src="/WhatsApp_Image_2026-08-18_at_08.58.25.jpeg" alt="Moran Pharmacy" className="logo__img" /></Link>
           <form className="header__search" onSubmit={submit}><Search size={17} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search medicines, symptoms or brands" aria-label="Search products" /></form>
           <div className="header__icons">
-            <a href="https://wa.me/254700123456" target="_blank" rel="noreferrer" className="icon-btn header__chat"><MessageCircle size={19} /><span className="icon-btn__label">Pharmacist</span></a>
+            <a href="https://wa.me/254700123456" target="_blank" rel="noreferrer" className="icon-btn header__chat header__pharmacist-btn"><MessageCircle size={19} /><span className="icon-btn__label">Ask a Pharmacist</span></a>
             {user || demoUser ? (<>
               <Link to={isAdmin ? '/admin' : isPharmacist ? '/pharmacist' : '/account'} className="icon-btn" aria-label={isAdmin ? 'Admin dashboard' : isPharmacist ? 'Pharmacist portal' : 'My account'}>{isAdmin ? <ShieldCheck size={19} /> : isPharmacist ? <Stethoscope size={19} /> : <User size={19} />}<span className="icon-btn__label">{isAdmin ? 'Admin' : isPharmacist ? 'Rx Portal' : 'Account'}</span></Link>
               <button className="icon-btn" onClick={handleSignOut} aria-label="Sign out"><LogOut size={19} /><span className="icon-btn__label">Sign out</span></button>
@@ -43,7 +68,70 @@ export function Navbar() {
             <Link to="/cart" className="icon-btn icon-btn--cart" aria-label="Cart"><ShoppingBag size={19} />{count > 0 && <span>{count}</span>}<span className="icon-btn__label">Cart</span></Link>
           </div>
         </div>
-        <nav className={`main-nav ${open ? 'main-nav--open' : ''}`}><div className="shell main-nav__inner">{navLinks.map((link) => <NavLink key={link.path} to={link.path} className={({ isActive }) => `main-nav__link${isActive ? ' main-nav__link--active' : ''}`} onClick={() => setOpen(false)}>{link.label}</NavLink>)}</div></nav>
+
+        {/* Desktop navigation */}
+        <nav className={`main-nav ${open ? 'main-nav--open' : ''}`}>
+          <div className="shell main-nav__inner">
+            <div className="main-nav__dropdown" ref={shopRef}>
+              <button
+                className={`main-nav__link main-nav__shop-btn ${shopOpen ? 'main-nav__link--active' : ''}`}
+                onClick={() => setShopOpen(!shopOpen)}
+                aria-expanded={shopOpen}
+              >
+                Shop <ChevronDown size={14} className={`main-nav__chevron ${shopOpen ? 'main-nav__chevron--up' : ''}`} />
+              </button>
+              {shopOpen && (
+                <div className="main-nav__mega">
+                  {shopCategories.map((cat) => (
+                    <NavLink
+                      key={cat.label}
+                      to={cat.path}
+                      className="main-nav__mega-link"
+                      onClick={() => { setShopOpen(false); setOpen(false); }}
+                    >
+                      {cat.label}
+                    </NavLink>
+                  ))}
+                </div>
+              )}
+            </div>
+            {primaryNav.map((link) => (
+              <NavLink
+                key={link.label}
+                to={link.path}
+                className={({ isActive }) => `main-nav__link${isActive ? ' main-nav__link--active' : ''}`}
+                onClick={() => setOpen(false)}
+              >
+                {link.label}
+              </NavLink>
+            ))}
+          </div>
+        </nav>
+
+        {/* Mobile navigation */}
+        <nav className={`mobile-nav ${open ? 'mobile-nav--open' : ''}`}>
+          <div className="shell mobile-nav__inner">
+            <form className="mobile-nav__search" onSubmit={submit}><Search size={17} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search medicines, symptoms or brands" aria-label="Search products" /></form>
+
+            <button className="mobile-nav__expand" onClick={() => setMobileShopOpen(!mobileShopOpen)}>
+              Shop <ChevronDown size={16} className={mobileShopOpen ? 'mobile-nav__chevron--up' : ''} />
+            </button>
+            {mobileShopOpen && (
+              <div className="mobile-nav__sub">
+                {shopCategories.map((cat) => (
+                  <NavLink key={cat.label} to={cat.path} className="mobile-nav__sub-link" onClick={() => { setOpen(false); setMobileShopOpen(false); }}>
+                    {cat.label}
+                  </NavLink>
+                ))}
+              </div>
+            )}
+            {primaryNav.map((link) => (
+              <NavLink key={link.label} to={link.path} className="mobile-nav__link" onClick={() => setOpen(false)}>
+                {link.label}
+              </NavLink>
+            ))}
+          </div>
+        </nav>
       </header>
     </>
   );
