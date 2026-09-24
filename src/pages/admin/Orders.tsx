@@ -1,67 +1,50 @@
-import { useEffect, useState, useCallback } from 'react';
-import { Clock, Package, Search } from 'lucide-react';
-import { supabase } from '@/lib/supabase';
+import { useState } from 'react';
+import { ChevronLeft, ChevronRight, Clock, Package, Search } from 'lucide-react';
 import type { AdminOrder, OrderStatus } from './types';
 import { STATUSES, STATUS_LABELS, price } from './types';
+import { useAdminOrders, useUpdateOrderStatus } from '@/lib/queries';
+import { useOrdersRealtime } from '@/lib/useOrdersRealtime';
+
+const PAGE_SIZE = 50;
 
 export function Orders() {
-  const [orders, setOrders] = useState<AdminOrder[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
   const [filter, setFilter] = useState('all');
   const [search, setSearch] = useState('');
   const [updatingId, setUpdatingId] = useState<string | null>(null);
 
-  useEffect(() => {
-    loadOrders();
-  }, []);
+  const { data, isLoading, error } = useAdminOrders(page, PAGE_SIZE);
+  const updateStatus = useUpdateOrderStatus();
+  useOrdersRealtime();
 
-  const loadOrders = async () => {
-    setLoading(true);
-    setError(null);
-    const { data, error: fetchError } = await supabase
-      .from('orders')
-      .select('*')
-      .order('created_at', { ascending: false });
+  const orders = data?.items ?? [];
+  const total = data?.total ?? 0;
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
-    if (fetchError) {
-      setError('Could not load orders.');
-      setLoading(false);
-      return;
+  const handleStatusChange = async (id: string, newStatus: OrderStatus) => {
+    setUpdatingId(id);
+    try {
+      await updateStatus.mutateAsync({ id, status: newStatus });
+    } catch {
+      // error is surfaced via mutation state
     }
-    setOrders((data as AdminOrder[]) ?? []);
-    setLoading(false);
+    setUpdatingId(null);
   };
 
-  const updateStatus = useCallback(async (id: string, newStatus: OrderStatus) => {
-    setUpdatingId(id);
-    const { error: updateError } = await supabase
-      .from('orders')
-      .update({ status: newStatus, updated_at: new Date().toISOString() })
-      .eq('id', id);
-
-    if (updateError) {
-      setError('Could not update order status.');
-      setUpdatingId(null);
-      return;
-    }
-    setOrders((prev) => prev.map((o) => (o.id === id ? { ...o, status: newStatus } : o)));
-    setUpdatingId(null);
-  }, []);
-
-  const counts: Record<string, number> = { all: orders.length, pending: 0, confirmed: 0, packed: 0, dispatched: 0, delivered: 0, cancelled: 0 };
+  const counts: Record<string, number> = { all: total, pending: 0, confirmed: 0, packed: 0, dispatched: 0, delivered: 0, cancelled: 0 };
   orders.forEach((o) => { counts[o.status] = (counts[o.status] ?? 0) + 1; });
 
-  const filtered = orders.filter((o) =>
+  const filtered = orders.filter((o: AdminOrder) =>
     (filter === 'all' || o.status === filter) &&
     (!search || o.order_number.toLowerCase().includes(search.toLowerCase()) || o.delivery_name.toLowerCase().includes(search.toLowerCase()))
   );
 
-  if (loading) return <div className="track-loading"><Package className="spin" size={36} /><p>Loading orders…</p></div>;
+  if (isLoading) return <div className="track-loading"><Package className="spin" size={36} /><p>Loading orders…</p></div>;
 
   return (
     <div>
-      {error && <div className="auth__error" style={{ marginBottom: 20 }}>{error}</div>}
+      {error && <div className="auth__error" style={{ marginBottom: 20 }}>{(error as Error).message}</div>}
+      {updateStatus.isError && <div className="auth__error" style={{ marginBottom: 20 }}>Could not update order status.</div>}
 
       <div className="admin__stats">
         {STATUSES.map((status) => (
@@ -107,7 +90,7 @@ export function Orders() {
                 <select
                   value={order.status}
                   disabled={updatingId === order.id}
-                  onChange={(e) => updateStatus(order.id, e.target.value as OrderStatus)}
+                  onChange={(e) => handleStatusChange(order.id, e.target.value as OrderStatus)}
                   className="admin__select"
                 >
                   {STATUSES.map((status) => <option key={status} value={status}>{STATUS_LABELS[status]}</option>)}
@@ -115,6 +98,14 @@ export function Orders() {
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {totalPages > 1 && (
+        <div className="admin__bar" style={{ justifyContent: 'center', marginTop: 20 }}>
+          <button className="btn btn--outline btn--sm" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}><ChevronLeft size={16} /> Prev</button>
+          <span style={{ fontSize: 13, fontWeight: 700, color: '#5a704e' }}>Page {page} of {totalPages}</span>
+          <button className="btn btn--outline btn--sm" disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)}>Next <ChevronRight size={16} /></button>
         </div>
       )}
     </div>

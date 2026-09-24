@@ -78,6 +78,8 @@ export const STATUSES: OrderStatus[] = ['pending', 'confirmed', 'packed', 'dispa
 
 export const price = (value: number) => `KSh ${value.toLocaleString()}`;
 
+export type SortKey = 'name' | 'orders' | 'spent' | 'joined';
+
 export function productStatus(stock: number): ProductStatus {
   if (stock === 0) return 'out-of-stock';
   if (stock <= 10) return 'low-stock';

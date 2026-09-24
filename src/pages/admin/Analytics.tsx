@@ -1,8 +1,7 @@
-import { useEffect, useState } from 'react';
 import { Activity, BarChart3, ShoppingBag, TrendingUp, Users } from 'lucide-react';
-import { supabase } from '@/lib/supabase';
 import type { AdminOrder, AdminProduct } from './types';
 import { STATUSES, STATUS_LABELS, price } from './types';
+import { useAnalyticsData } from '@/lib/queries';
 
 interface ProductSales {
   name: string;
@@ -11,30 +10,13 @@ interface ProductSales {
 }
 
 export function Analytics() {
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [orders, setOrders] = useState<AdminOrder[]>([]);
-  const [products, setProducts] = useState<AdminProduct[]>([]);
-  const [customers, setCustomers] = useState<number>(0);
+  const { data, isLoading, error } = useAnalyticsData();
 
-  useEffect(() => { loadAll(); }, []);
+  if (isLoading) return <div className="track-loading"><BarChart3 className="spin" size={36} /><p>Loading analytics…</p></div>;
 
-  const loadAll = async () => {
-    setLoading(true);
-    setError(null);
-    const [{ data: ordData, error: ordErr }, { data: prodData, error: prodErr }, { data: profData, error: profErr }] = await Promise.all([
-      supabase.from('orders').select('*').order('created_at', { ascending: false }),
-      supabase.from('products').select('*'),
-      supabase.from('profiles').select('id'),
-    ]);
-    if (ordErr || prodErr || profErr) { setError('Could not load analytics data.'); setLoading(false); return; }
-    setOrders((ordData as AdminOrder[]) ?? []);
-    setProducts((prodData as AdminProduct[]) ?? []);
-    setCustomers(profData?.length ?? 0);
-    setLoading(false);
-  };
-
-  if (loading) return <div className="track-loading"><BarChart3 className="spin" size={36} /><p>Loading analytics…</p></div>;
+  const orders: AdminOrder[] = data?.orders ?? [];
+  const products: Pick<AdminProduct, 'id' | 'name' | 'stock' | 'sales'>[] = data?.products ?? [];
+  const customers: number = data?.customerCount ?? 0;
 
   const now = new Date();
   const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -79,7 +61,7 @@ export function Analytics() {
 
   return (
     <div>
-      {error && <div className="auth__error" style={{ marginBottom: 20 }}>{error}</div>}
+      {error && <div className="auth__error" style={{ marginBottom: 20 }}>{(error as Error).message}</div>}
 
       <div className="admin__stats">
         <div className="admin-stat admin-stat--delivered"><span className="admin-stat__icon"><TrendingUp size={16} /></span><div><strong>{price(revenueMonth)}</strong><small>Revenue this month</small></div></div>

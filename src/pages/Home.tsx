@@ -1,13 +1,30 @@
+import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight, BadgeCheck, Leaf, MessageCircle, Phone, ShieldCheck, Star, Truck } from 'lucide-react';
 import { Button, ProductRow } from '@/components/ProductCard';
-import { featuredPicks, newArrivals, trending } from '@/data/selectors';
+import { products as staticProducts, type Product } from '@/data/products';
 import { categories, testimonials } from '@/data/products';
+import { useProductsCatalog } from '@/lib/queries';
 
 const heroImage = 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRvMpIZxnoH6vUwwH219NCGGmR5VI3rqUscxbn1KxUbZJ7Pwx6LJAMP8hj9&s=10';
 const editorialImage = 'https://user25521.na.imgto.link/public/20260820/982e16ad-7f4a-4280-91ea-f1e83f16cfe8-cb73bbc5-35e8-455c-a30d-e9ba821b21d5.avif';
 
 export function Home() {
+  const { data: liveProducts } = useProductsCatalog();
+
+  const source: Product[] = useMemo(() => {
+    if (!liveProducts) return staticProducts;
+    return (liveProducts as unknown as Product[]).map((p) => ({
+      ...p,
+      oldPrice: (p as unknown as { old_price: number | null }).old_price,
+      isNew: (p as unknown as { is_new: boolean }).is_new,
+    }));
+  }, [liveProducts]);
+
+  const trending = useMemo(() => [...source].sort((a, b) => b.rating - a.rating).slice(0, 8), [source]);
+  const newArrivals = useMemo(() => source.filter((p) => p.isNew).slice(0, 4), [source]);
+  const featuredPicks = useMemo(() => source.filter((p) => p.tag === 'Best seller').slice(0, 4), [source]);
+
   return (
     <>
       <section className="hero" style={{ backgroundImage: `url(${heroImage})` }}>
@@ -44,20 +61,20 @@ export function Home() {
         </div>
       </section>
 
-      <ProductRow items={trending()} eyebrow="Customer favourites" heading="Popular products" action="View all" />
+      <ProductRow items={trending} eyebrow="Customer favourites" heading="Popular products" action="View all" />
 
       <section className="editorial" style={{ backgroundImage: `url(${editorialImage})` }}>
         <div className="editorial__overlay" />
         <div className="shell editorial__content">
           <span className="eyebrow eyebrow--light">Our promise</span>
-          <blockquote>“Genuine. Reliable. Human. We are not just another online pharmacy — we are your wellness partner.”</blockquote>
+          <blockquote>"Genuine. Reliable. Human. We are not just another online pharmacy — we are your wellness partner."</blockquote>
           <p className="editorial__attr">— The Moran Pharmacy team</p>
           <Link to="/products" className="btn btn--primary">Shop the range <ArrowRight size={16} /></Link>
         </div>
       </section>
 
-      <ProductRow items={newArrivals()} eyebrow="Just landed" heading="New arrivals" action="Shop new in" />
-      <ProductRow items={featuredPicks()} eyebrow="Trusted by families" heading="Best sellers" action="View all" />
+      <ProductRow items={newArrivals} eyebrow="Just landed" heading="New arrivals" action="Shop new in" />
+      <ProductRow items={featuredPicks} eyebrow="Trusted by families" heading="Best sellers" action="View all" />
 
       <section className="section section--pharmacist">
         <div className="shell pharmacist__inner">
@@ -86,7 +103,7 @@ export function Home() {
             {testimonials.map((item) => (
               <article className="testimonial" key={item.id}>
                 <div className="testimonial__stars">{Array.from({ length: item.rating }).map((_, index) => <Star key={index} size={16} fill="currentColor" />)}</div>
-                <p>“{item.quote}”</p>
+                <p>"{item.quote}"</p>
                 <div className="testimonial__author"><img src={item.avatar} alt={item.name} loading="lazy" /><div><strong>{item.name}</strong><span>{item.location}</span></div></div>
               </article>
             ))}

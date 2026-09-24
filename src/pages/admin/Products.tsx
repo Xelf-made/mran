@@ -1,10 +1,11 @@
-import { useEffect, useState, type ReactNode } from 'react';
-import { Clock, Edit3, Eye, Package, Plus, Search, TrendingUp, X } from 'lucide-react';
-import { supabase } from '@/lib/supabase';
+import { useState, type ReactNode } from 'react';
+import { ChevronLeft, ChevronRight, Clock, Edit3, Eye, Package, Plus, Search, TrendingUp, X } from 'lucide-react';
 import type { AdminProduct } from './types';
 import { price, productStatus } from './types';
+import { useAdminProducts, useSaveProduct, useDeleteProduct, useToggleStock } from '@/lib/queries';
 
 const CATEGORIES = ['Medicines', 'Vitamins & Supplements', 'Personal Care', 'Mother & Baby', 'Medical Devices', 'Wellness'];
+const PAGE_SIZE = 20;
 
 const emptyForm: Omit<AdminProduct, 'id'> = {
   name: '', brand: '', category: 'Medicines', price: 0, old_price: null,
@@ -13,26 +14,22 @@ const emptyForm: Omit<AdminProduct, 'id'> = {
 };
 
 export function Products() {
-  const [products, setProducts] = useState<AdminProduct[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState('all');
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<AdminProduct | null>(null);
   const [form, setForm] = useState<Omit<AdminProduct, 'id'>>(emptyForm);
-  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => { loadProducts(); }, []);
+  const { data, isLoading } = useAdminProducts(page, PAGE_SIZE);
+  const saveMutation = useSaveProduct();
+  const deleteMutation = useDeleteProduct();
+  const toggleMutation = useToggleStock();
 
-  const loadProducts = async () => {
-    setLoading(true);
-    setError(null);
-    const { data, error: fetchError } = await supabase.from('products').select('*').order('id', { ascending: true });
-    if (fetchError) { setError('Could not load products.'); setLoading(false); return; }
-    setProducts((data as AdminProduct[]) ?? []);
-    setLoading(false);
-  };
+  const products = data?.items ?? [];
+  const total = data?.total ?? 0;
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   const openAdd = () => { setEditing(null); setForm(emptyForm); setModalOpen(true); };
   const openEdit = (p: AdminProduct) => {
@@ -43,35 +40,25 @@ export function Products() {
 
   const save = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSaving(true);
     setError(null);
-    const payload = { ...form, old_price: form.old_price || null, tag: form.tag || null };
-
-    if (editing) {
-      const { error: updErr } = await supabase.from('products').update(payload).eq('id', editing.id);
-      if (updErr) { setError('Could not save product.'); setSaving(false); return; }
-      setProducts((prev) => prev.map((p) => (p.id === editing.id ? { ...editing, ...payload } : p)));
-    } else {
-      const { data, error: insErr } = await supabase.from('products').insert(payload).select('*').single();
-      if (insErr) { setError('Could not add product.'); setSaving(false); return; }
-      setProducts((prev) => [...prev, data as AdminProduct]);
+    try {
+      await saveMutation.mutateAsync({ editing, payload: form });
+      setModalOpen(false);
+    } catch {
+      setError('Could not save product.');
     }
-    setSaving(false);
-    setModalOpen(false);
   };
 
   const toggleStock = async (p: AdminProduct) => {
     const newStock = p.stock > 0 ? 0 : 50;
-    const { error: updErr } = await supabase.from('products').update({ stock: newStock }).eq('id', p.id);
-    if (updErr) return;
-    setProducts((prev) => prev.map((item) => (item.id === p.id ? { ...item, stock: newStock } : item)));
+    try { await toggleMutation.mutateAsync({ id: p.id, stock: newStock }); }
+    catch { /* surfaced by mutation state */ }
   };
 
   const deleteProduct = async (p: AdminProduct) => {
     if (!confirm(`Delete "${p.name}"? This cannot be undone.`)) return;
-    const { error: delErr } = await supabase.from('products').delete().eq('id', p.id);
-    if (delErr) { setError('Could not delete product.'); return; }
-    setProducts((prev) => prev.filter((item) => item.id !== p.id));
+    try { await deleteMutation.mutateAsync(p.id); }
+    catch { setError('Could not delete product.'); }
   };
 
   const filtered = products.filter((p) =>
@@ -83,15 +70,15 @@ export function Products() {
   const lowStock = products.filter((p) => productStatus(p.stock) === 'low-stock').length;
   const outStock = products.filter((p) => productStatus(p.stock) === 'out-of-stock').length;
 
-  if (loading) return <div className="track-loading"><Package className="spin" size={36} /><p>Loading products…</p></div>;
+  if (isLoading) return <div className="track-loading"><Package className="spin" size={36} /><p>Loading products…</p></div>;
 
   return (
     <div>
       {error && <div className="auth__error" style={{ marginBottom: 20 }}>{error}</div>}
 
       <div className="admin__stats">
-        <div className="admin-stat"><span className="admin-stat__icon"><Package size={16} /></span><div><strong>{products.length}</strong><small>Products</small></div></div>
-        <div className="admin-stat"><span className="admin-stat__icon"><TrendingUp size={16} /></span><div><strong>{price(stockValue)}</strong><small>Stock value</small></div></div>
+        <div className="admin-stat"><span className="admin-stat__icon"><Package size={16} /></span><div><strong>{total}</strong><small>Products</small></div></div>
+        <div className="admin-stat"><span className="admin-stat__icon"><TrendingUp size={16} /></span><div><strong>{price(stockValue)}</strong><small>Stock value (page)</small></div></div>
         <div className="admin-stat admin-stat--pending"><span className="admin-stat__icon"><Clock size={16} /></span><div><strong>{lowStock}</strong><small>Low stock</small></div></div>
         <div className="admin-stat admin-stat--cancelled"><span className="admin-stat__icon"><X size={16} /></span><div><strong>{outStock}</strong><small>Out of stock</small></div></div>
       </div>
@@ -132,7 +119,15 @@ export function Products() {
         })}
       </div>
 
-      {modalOpen && <ProductModal editing={editing} form={form} setForm={setForm} saving={saving} error={error} onClose={() => setModalOpen(false)} onSave={save} />}
+      {totalPages > 1 && (
+        <div className="admin__bar" style={{ justifyContent: 'center', marginTop: 20 }}>
+          <button className="btn btn--outline btn--sm" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}><ChevronLeft size={16} /> Prev</button>
+          <span style={{ fontSize: 13, fontWeight: 700, color: '#5a704e' }}>Page {page} of {totalPages}</span>
+          <button className="btn btn--outline btn--sm" disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)}>Next <ChevronRight size={16} /></button>
+        </div>
+      )}
+
+      {modalOpen && <ProductModal editing={editing} form={form} setForm={setForm} saving={saveMutation.isPending} error={error} onClose={() => setModalOpen(false)} onSave={save} />}
     </div>
   );
 }
