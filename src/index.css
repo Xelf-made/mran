@@ -771,3 +771,49 @@ img { display: block; max-width: 100%; }
   .pcard__view { opacity: 1; transform: translateY(0); }
   .topbar__right { display: none; }
 }
+
+/* ===== Toast notifications ===== */
+.toast-container { position: fixed; bottom: 24px; right: 24px; z-index: 9999; display: flex; flex-direction: column; gap: 10px; max-width: 380px; }
+.toast { display: flex; align-items: center; gap: 10px; padding: 14px 18px; border-radius: 10px; background: #fff; box-shadow: 0 8px 24px rgba(43,59,42,.15); font-size: 14px; font-weight: 600; color: #2b3b2a; animation: toastSlide .3s ease; }
+@keyframes toastSlide { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: translateX(0); } }
+.toast--success { border-left: 4px solid #4f8f21; }
+.toast--success svg { color: #4f8f21; }
+.toast--error { border-left: 4px solid #c4451a; }
+.toast--error svg { color: #c4451a; }
+.toast--info { border-left: 4px solid #2050a0; }
+.toast--info svg { color: #2050a0; }
+.toast__close { margin-left: auto; background: none; border: none; cursor: pointer; color: #94a884; padding: 2px; display: grid; place-items: center; }
+.toast__close:hover { color: #2b3b2a; }
+
+/* ===== Rx product card lock state ===== */
+.pcard--locked .pcard__media img { filter: blur(6px); transition: filter .4s ease; }
+.pcard--locked:hover .pcard__media img { filter: blur(3px); }
+.pcard__lock-badge { position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%); padding: 5px 12px; border-radius: 6px; background: rgba(43,59,42,.85); color: #fff; font-size: 11px; font-weight: 700; white-space: nowrap; display: flex; align-items: center; gap: 4px; z-index: 2; }
+.pcard__upload { width: 100%; justify-content: center; }
+.pcard__upload:hover { border-color: #7bc943; color: #4f8f21; }
+
+/* ===== Customer prescriptions tab ===== */
+.rx-upload-zone { display: flex; align-items: center; gap: 16px; padding: 28px 32px; border: 2px dashed #c8dcb0; border-radius: 14px; background: #fafff5; cursor: pointer; transition: border-color .2s, background .2s; margin-bottom: 24px; }
+.rx-upload-zone:hover { border-color: #7bc943; background: #f0f9e6; }
+.rx-upload-zone svg { color: #4f8f21; flex-shrink: 0; }
+.rx-upload-zone strong { display: block; font-size: 15px; font-weight: 800; color: #2b3b2a; }
+.rx-upload-zone span { display: block; font-size: 13px; color: #5a704e; margin-top: 2px; }
+
+.rx-customer-list { display: grid; gap: 12px; }
+.rx-customer-card { padding: 18px 20px; background: #fff; border: 1px solid #edf2e6; border-radius: 12px; display: flex; flex-direction: column; gap: 10px; }
+.rx-customer-card__top { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.rx-customer-card__file { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 700; color: #2b3b2a; }
+.rx-customer-card__file svg { color: #4f8f21; }
+.rx-customer-card__time { font-size: 12px; color: #94a884; }
+.rx-customer-card__notes { padding: 12px 14px; border-radius: 8px; background: #f5f9ec; font-size: 13px; color: #2b3b2a; line-height: 1.5; }
+.rx-customer-card__notes strong { font-weight: 800; }
+
+.rx-status { display: inline-flex; align-items: center; gap: 4px; padding: 4px 12px; border-radius: 6px; font-size: 12px; font-weight: 700; white-space: nowrap; }
+.rx-status--pending { background: #fff8e6; color: #a07c10; }
+.rx-status--approved { background: #e6f5d8; color: #3a7010; }
+.rx-status--rejected { background: #ffe6e6; color: #a02020; }
+
+@media (max-width: 768px) {
+  .toast-container { left: 16px; right: 16px; bottom: 16px; max-width: none; }
+  .rx-customer-card__top { flex-direction: column; align-items: flex-start; }
+}

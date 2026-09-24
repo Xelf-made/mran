@@ -6,6 +6,9 @@ import { PageShell } from '@/components/PageShell';
 import { useCart } from '@/contexts/cart-context';
 import { useAuth } from '@/contexts/useAuth';
 import { supabase } from '@/lib/supabase';
+import { useToast } from '@/components/Toast';
+import { useQueryClient } from '@tanstack/react-query';
+import { queryKeys } from '@/lib/queries';
 
 const price = (value: number) => `KSh ${value.toLocaleString()}`;
 
@@ -13,6 +16,8 @@ export function CheckoutPage() {
   const { items, subtotal, clearCart } = useCart();
   const { user } = useAuth();
   const navigate = useNavigate();
+  const showToast = useToast();
+  const qc = useQueryClient();
   const [placed, setPlaced] = useState(false);
   const [orderNumber, setOrderNumber] = useState('');
   const [payment, setPayment] = useState('mpesa');
@@ -29,19 +34,28 @@ export function CheckoutPage() {
 
     if (user) {
       const orderItems = items.map((item) => ({ name: item.name, brand: item.brand, price: item.price, quantity: item.quantity, image: item.image }));
-      const { data, error: insertError } = await supabase.from('orders').insert({
-        total,
-        delivery_fee: shipping,
-        payment_method: payment,
-        items: orderItems,
-        delivery_name: form.name,
-        delivery_phone: form.phone,
-        delivery_address: form.address,
-        delivery_area: form.area,
-      }).select('order_number').single();
+      try {
+        const { data, error: insertError } = await supabase.from('orders').insert({
+          user_id: user.id,
+          total,
+          delivery_fee: shipping,
+          payment_method: payment,
+          items: orderItems,
+          delivery_name: form.name,
+          delivery_phone: form.phone,
+          delivery_address: form.address,
+          delivery_area: form.area,
+        }).select('order_number').single();
 
-      if (insertError) { setError('Could not place order. Please try again.'); setSubmitting(false); return; }
-      setOrderNumber(data.order_number);
+        if (insertError) throw insertError;
+        setOrderNumber(data.order_number);
+        qc.invalidateQueries({ queryKey: queryKeys.customerOrders(user.id) });
+        qc.invalidateQueries({ queryKey: queryKeys.orders });
+      } catch {
+        setError('Could not place order. Please try again.');
+        setSubmitting(false);
+        return;
+      }
     }
 
     clearCart();

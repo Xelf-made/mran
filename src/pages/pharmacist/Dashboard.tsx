@@ -3,12 +3,16 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Check, Eye, FileText, LogOut, Repeat, Stethoscope, X } from 'lucide-react';
 import { useAuth } from '@/contexts/useAuth';
 import { usePendingPrescriptions, useReviewPrescription, type Prescription } from '@/lib/queries';
+import { usePrescriptionsRealtime } from '@/lib/usePrescriptionsRealtime';
 import { getDemoPendingPrescriptions } from '@/data/demoPrescriptions';
+import { useToast } from '@/components/Toast';
 
 export function PharmacistDashboard() {
   const { demoUser, user, isPharmacist, isAdmin, signOut } = useAuth();
   const navigate = useNavigate();
   const reviewMutation = useReviewPrescription();
+  const showToast = useToast();
+  usePrescriptionsRealtime();
   const reviewerId = user?.id ?? demoUser?.id ?? '';
 
   const [notes, setNotes] = useState<Record<string, string>>({});
@@ -65,8 +69,10 @@ export function PharmacistDashboard() {
     try {
       await reviewMutation.mutateAsync({ id: rx.id, status, notes: note, reviewerId });
       setNotes((prev) => { const next = { ...prev }; delete next[rx.id]; return next; });
+      showToast('success', `Prescription ${status === 'approved' ? 'approved' : 'rejected'}. The customer has been notified.`);
     } catch {
       setErrors((prev) => ({ ...prev, [rx.id]: `Could not ${status === 'approved' ? 'approve' : 'reject'} prescription. Please try again.` }));
+      showToast('error', 'Could not update prescription status.');
     }
   };
 

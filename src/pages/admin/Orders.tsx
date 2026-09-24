@@ -4,14 +4,21 @@ import type { AdminOrder, OrderStatus } from './types';
 import { STATUSES, STATUS_LABELS, price } from './types';
 import { useAdminOrders, useUpdateOrderStatus } from '@/lib/queries';
 import { useOrdersRealtime } from '@/lib/useOrdersRealtime';
+import { useDebounce } from '@/lib/useDebounce';
+import { useToast } from '@/components/Toast';
+import { useQueryClient } from '@tanstack/react-query';
+import { queryKeys } from '@/lib/queries';
 
-const PAGE_SIZE = 50;
+const PAGE_SIZE = 25;
 
 export function Orders() {
   const [page, setPage] = useState(1);
   const [filter, setFilter] = useState('all');
   const [search, setSearch] = useState('');
   const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const debouncedSearch = useDebounce(search, 300);
+  const showToast = useToast();
+  const qc = useQueryClient();
 
   const { data, isLoading, error } = useAdminOrders(page, PAGE_SIZE);
   const updateStatus = useUpdateOrderStatus();
@@ -23,10 +30,24 @@ export function Orders() {
 
   const handleStatusChange = async (id: string, newStatus: OrderStatus) => {
     setUpdatingId(id);
+
+    // Optimistic update — instantly reflect new status in the cache
+    qc.setQueriesData({ queryKey: queryKeys.orders }, (oldData: unknown) => {
+      if (!oldData || typeof oldData !== 'object') return oldData;
+      const d = oldData as { items?: AdminOrder[]; total?: number };
+      return {
+        ...d,
+        items: (d.items ?? []).map((o) => o.id === id ? { ...o, status: newStatus } : o),
+      };
+    });
+
     try {
       await updateStatus.mutateAsync({ id, status: newStatus });
+      showToast('success', `Order status updated to ${STATUS_LABELS[newStatus]}.`);
     } catch {
-      // error is surfaced via mutation state
+      showToast('error', 'Could not update order status. Reverting.');
+      // Rollback — refetch from server
+      qc.invalidateQueries({ queryKey: queryKeys.orders });
     }
     setUpdatingId(null);
   };
@@ -34,17 +55,17 @@ export function Orders() {
   const counts: Record<string, number> = { all: total, pending: 0, confirmed: 0, packed: 0, dispatched: 0, delivered: 0, cancelled: 0 };
   orders.forEach((o) => { counts[o.status] = (counts[o.status] ?? 0) + 1; });
 
+  const lowerSearch = debouncedSearch.toLowerCase();
   const filtered = orders.filter((o: AdminOrder) =>
     (filter === 'all' || o.status === filter) &&
-    (!search || o.order_number.toLowerCase().includes(search.toLowerCase()) || o.delivery_name.toLowerCase().includes(search.toLowerCase()))
+    (!lowerSearch || o.order_number.toLowerCase().includes(lowerSearch) || o.delivery_name.toLowerCase().includes(lowerSearch))
   );
 
   if (isLoading) return <div className="track-loading"><Package className="spin" size={36} /><p>Loading orders…</p></div>;
 
   return (
     <div>
-      {error && <div className="auth__error" style={{ marginBottom: 20 }}>{(error as Error).message}</div>}
-      {updateStatus.isError && <div className="auth__error" style={{ marginBottom: 20 }}>Could not update order status.</div>}
+      {error && <div className="auth__error" style={{ marginBottom: 20 }}>Could not load orders. Showing cached data if available.</div>}
 
       <div className="admin__stats">
         {STATUSES.map((status) => (

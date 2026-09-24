@@ -1,8 +1,13 @@
-import { type ReactNode } from 'react';
+import { useRef, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, Lock, Upload } from 'lucide-react';
 import { useCart } from '@/contexts/cart-context';
 import { type Product } from '@/data/products';
+import { useAuth } from '@/contexts/useAuth';
+import { useHasApprovedPrescription, useUploadPrescription } from '@/lib/queries';
+import { useCustomerPrescriptionRealtime } from '@/lib/usePrescriptionsRealtime';
+import { useToast } from '@/components/Toast';
+
 const price = (value: number) => `KSh ${value.toLocaleString()}`;
 
 export function Button({ children, variant = 'primary', type = 'button', onClick, className = '' }: { children: ReactNode; variant?: 'primary' | 'outline' | 'ghost'; type?: 'button' | 'submit'; onClick?: () => void; className?: string }) {
@@ -15,13 +20,49 @@ export function Stars({ rating, className = '' }: { rating: number; className?: 
 
 export function ProductCard({ product }: { product: Product }) {
   const { addItem } = useCart();
+  const { user } = useAuth();
+  const showToast = useToast();
+
+  const isRx = Boolean(product.prescription);
+  const userId = user?.id ?? '';
+  const { data: hasApproved, isLoading: checkingApproval } = useHasApprovedPrescription(userId);
+  useCustomerPrescriptionRealtime(userId);
+
+  const uploadMutation = useUploadPrescription();
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+
+  const isLocked = isRx && !hasApproved;
+
+  const handleUpload = async (file: File) => {
+    if (!userId) {
+      showToast('error', 'Please sign in to upload a prescription.');
+      return;
+    }
+    setUploading(true);
+    try {
+      await uploadMutation.mutateAsync({ file, userId, fileName: file.name });
+      showToast('success', 'Prescription uploaded! A pharmacist will review it shortly.');
+    } catch {
+      showToast('error', 'Could not upload. Please try again.');
+    }
+    setUploading(false);
+  };
+
+  const onFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) handleUpload(file);
+    e.target.value = '';
+  };
+
   return (
-    <article className="pcard">
+    <article className={`pcard ${isLocked ? 'pcard--locked' : ''}`}>
       <Link to={`/products/${product.id}`} className="pcard__media">
         <img src={product.image} alt={product.name} loading="lazy" />
         {product.tag && <span className="pcard__tag">{product.tag}</span>}
         {product.isNew && <span className="pcard__new">New</span>}
         {product.prescription && <span className="pcard__rx">Rx</span>}
+        {isLocked && <span className="pcard__lock-badge"><Lock size={12} /> Prescription required</span>}
         <span className="pcard__view">View <ArrowRight size={13} /></span>
       </Link>
       <div className="pcard__body">
@@ -32,7 +73,18 @@ export function ProductCard({ product }: { product: Product }) {
           <strong>{price(product.price)}</strong>
           {product.oldPrice && <del>{price(product.oldPrice)}</del>}
         </div>
-        <Button onClick={() => addItem(product)} className="pcard__add">Add to cart</Button>
+        {isLocked ? (
+          <>
+            <input ref={fileRef} type="file" accept="image/*,application/pdf" onChange={onFileChange} hidden />
+            <Button variant="outline" className="pcard__upload" onClick={() => fileRef.current?.click()}>
+              {uploading ? 'Uploading…' : <><Upload size={15} /> Upload prescription</>}
+            </Button>
+          </>
+        ) : isRx && checkingApproval ? (
+          <Button variant="outline" className="pcard__add" onClick={() => {}}>Checking…</Button>
+        ) : (
+          <Button onClick={() => addItem(product)} className="pcard__add">Add to cart</Button>
+        )}
       </div>
     </article>
   );
@@ -51,5 +103,3 @@ export function ProductRow({ items, heading, eyebrow, action }: { items: Product
     </section>
   );
 }
-
-

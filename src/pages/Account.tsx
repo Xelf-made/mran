@@ -10,8 +10,10 @@ import { PaymentMethods } from '@/pages/account/PaymentMethods';
 import { Wishlist } from '@/pages/account/Wishlist';
 import { ProfileSettings } from '@/pages/account/ProfileSettings';
 import { Notifications } from '@/pages/account/Notifications';
+import { FileText } from 'lucide-react';
+import { Prescriptions } from '@/pages/account/Prescriptions';
 
-type Tab = 'overview' | 'orders' | 'addresses' | 'payments' | 'wishlist' | 'profile' | 'notifications';
+type Tab = 'overview' | 'orders' | 'prescriptions' | 'addresses' | 'payments' | 'wishlist' | 'profile' | 'notifications';
 
 export function AccountPage() {
   const { demoUser, user, isPharmacist, signOut } = useAuth();
@@ -47,6 +49,7 @@ export function AccountPage() {
   const tabs: { id: Tab; label: string; icon: typeof Package }[] = [
     { id: 'overview', label: 'Overview', icon: Package },
     { id: 'orders', label: 'My Orders', icon: ShoppingBag },
+    { id: 'prescriptions', label: 'Prescriptions', icon: FileText },
     { id: 'addresses', label: 'Addresses', icon: MapPin },
     { id: 'payments', label: 'Payment Methods', icon: CreditCard },
     { id: 'wishlist', label: 'Wishlist', icon: Heart },
@@ -90,6 +93,7 @@ export function AccountPage() {
           <div className="account__content">
             {tab === 'overview' && <Overview />}
             {tab === 'orders' && <MyOrders />}
+            {tab === 'prescriptions' && <Prescriptions />}
             {tab === 'addresses' && <Addresses />}
             {tab === 'payments' && <PaymentMethods />}
             {tab === 'wishlist' && <Wishlist />}

@@ -1,6 +1,7 @@
 import { Package } from 'lucide-react';
 import { useAuth } from '@/contexts/useAuth';
 import { useCustomerOrders } from '@/lib/queries';
+import { useCustomerOrdersRealtime } from '@/lib/useCustomerOrdersRealtime';
 import { demoOrders } from '@/data/demo';
 import { price, STATUS_LABELS } from './shared';
 
@@ -10,6 +11,7 @@ export function MyOrders() {
   const userId = user?.id ?? '';
 
   const { data: liveOrders, isLoading, error } = useCustomerOrders(userId);
+  useCustomerOrdersRealtime(userId);
   const orders = isDemo ? demoOrders : (liveOrders ?? []);
 
   const downloadReceipt = (orderNumber: string) => {

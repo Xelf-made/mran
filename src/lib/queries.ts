@@ -650,6 +650,57 @@ export function useReviewPrescription() {
   });
 }
 
+export function useUploadPrescription() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ file, userId, fileName }: {
+      file: File;
+      userId: string;
+      fileName: string;
+    }) => {
+      const ext = file.name.split('.').pop() ?? 'jpg';
+      const path = `${userId}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+      const { error: uploadError } = await supabase.storage
+        .from('prescriptions')
+        .upload(path, file, { upsert: false });
+      if (uploadError) throw uploadError;
+
+      const { data, error: insertError } = await supabase
+        .from('prescriptions')
+        .insert({
+          user_id: userId,
+          file_url: path,
+          file_name: fileName,
+          status: 'pending',
+        })
+        .select('id')
+        .single();
+      if (insertError) throw insertError;
+      return data;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['prescriptions'] });
+    },
+  });
+}
+
+export function useHasApprovedPrescription(userId: string) {
+  return useQuery({
+    queryKey: ['prescriptions', 'customer', userId, 'approved'],
+    queryFn: async () => {
+      const { count, error } = await supabase
+        .from('prescriptions')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', userId)
+        .eq('status', 'approved');
+      if (error) throw error;
+      return (count ?? 0) > 0;
+    },
+    staleTime: 15 * 1000,
+    enabled: !!userId,
+  });
+}
+
 export function useRxProducts() {
   return useQuery({
     queryKey: queryKeys.rxProducts,
