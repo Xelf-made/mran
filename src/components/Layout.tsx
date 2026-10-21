@@ -17,7 +17,6 @@ const shopCategories = [
 
 const primaryNav = [
   { label: 'Prescriptions', path: '/prescriptions' },
-  { label: 'Health Advice', path: '/health-advice' },
   { label: 'Branches', path: '/branches' },
   { label: 'Offers', path: '/offers' },
 ];

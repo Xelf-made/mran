@@ -15,7 +15,6 @@ import { TrackPage } from '@/pages/Track';
 import { AdminPage } from '@/pages/Admin';
 import { AccountPage } from '@/pages/Account';
 import { PrescriptionsPage } from '@/pages/PrescriptionsPublic';
-import { HealthAdvicePage } from '@/pages/HealthAdvice';
 import { BranchesPage } from '@/pages/Branches';
 import { OffersPage } from '@/pages/Offers';
 import { PharmacistLoginPage } from '@/pages/PharmacistLogin';
@@ -38,7 +37,6 @@ export default function App() {
             <Route path="/pharmacist-login" element={<PharmacistLoginPage />} />
             <Route path="/track" element={<TrackPage />} />
             <Route path="/prescriptions" element={<PrescriptionsPage />} />
-            <Route path="/health-advice" element={<HealthAdvicePage />} />
             <Route path="/branches" element={<BranchesPage />} />
             <Route path="/offers" element={<OffersPage />} />
             <Route path="/account" element={<AccountPage />} />
