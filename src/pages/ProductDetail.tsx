@@ -1,10 +1,14 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, ArrowRight, BadgeCheck, Check, Minus, Plus, RefreshCw, ShieldCheck, ShoppingBag, Truck } from 'lucide-react';
+import { ArrowLeft, ArrowRight, BadgeCheck, Check, Lock, Minus, Plus, RefreshCw, ShieldCheck, ShoppingBag, Truck, Upload } from 'lucide-react';
 import { Button, Stars } from '@/components/ProductCard';
 import { PageShell } from '@/components/PageShell';
 import { products } from '@/data/products';
 import { useCart } from '@/contexts/cart-context';
+import { useAuth } from '@/contexts/useAuth';
+import { useHasApprovedPrescription, useUploadPrescription } from '@/lib/queries';
+import { useCustomerPrescriptionRealtime } from '@/lib/usePrescriptionsRealtime';
+import { useToast } from '@/components/Toast';
 
 const price = (value: number) => `KSh ${value.toLocaleString()}`;
 
@@ -12,29 +16,94 @@ export function ProductDetail() {
   const { id } = useParams();
   const product = products.find((item) => item.id === Number(id));
   const { addItem } = useCart();
+  const { user, demoUser } = useAuth();
+  const showToast = useToast();
   const navigate = useNavigate();
   const [quantity, setQuantity] = useState(1);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  const userId = user?.id ?? demoUser?.id ?? '';
+  const isRx = Boolean(product?.prescription);
+  const { data: hasApproved, isLoading: checkingApproval } = useHasApprovedPrescription(userId);
+  useCustomerPrescriptionRealtime(userId);
+  const uploadMutation = useUploadPrescription();
+  const [uploading, setUploading] = useState(false);
 
   if (!product) return <PageShell><div className="shell empty"><h2>Product not found</h2><Link to="/products" className="btn btn--primary">Back to products</Link></div></PageShell>;
 
+  const isLocked = isRx && !hasApproved;
   const related = products.filter((item) => item.category === product.category && item.id !== product.id).slice(0, 4);
-  const add = () => { for (let i = 0; i < quantity; i += 1) addItem(product); navigate('/cart'); };
+
+  const add = () => {
+    if (isRx && !hasApproved) {
+      showToast('error', 'This medicine requires a prescription. Please upload one to unlock it.');
+      return;
+    }
+    for (let i = 0; i < quantity; i += 1) addItem(product);
+    navigate('/cart');
+  };
+
+  const handleUpload = async (file: File) => {
+    if (!userId) {
+      showToast('error', 'Please sign in to upload a prescription.');
+      navigate('/login');
+      return;
+    }
+    setUploading(true);
+    try {
+      await uploadMutation.mutateAsync({ file, userId, fileName: file.name });
+      showToast('success', 'Prescription uploaded! A pharmacist will review it shortly.');
+    } catch {
+      showToast('error', 'Could not upload. Please try again.');
+    }
+    setUploading(false);
+  };
+
+  const onFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) handleUpload(file);
+    e.target.value = '';
+  };
 
   return (
     <PageShell>
       <section className="shell detail">
         <button className="back-link" onClick={() => navigate(-1)}><ArrowLeft size={15} /> Back</button>
         <div className="detail__grid">
-          <div className="detail__media"><img src={product.image} alt={product.name} /></div>
+          <div className={`detail__media ${isLocked ? 'detail__media--locked' : ''}`}>
+            <img src={product.image} alt={product.name} />
+            {isLocked && <div className="detail__lock-overlay"><Lock size={32} /><span>Prescription required</span></div>}
+          </div>
           <div className="detail__info">
             <span className="eyebrow">{product.brand} · {product.category}</span>
             <h1>{product.name}</h1>
             <div className="detail__meta"><Stars rating={product.rating} /><span className="detail__reviews">{product.rating} · {product.reviews} reviews</span></div>
             <div className="detail__price"><strong>{price(product.price)}</strong>{product.oldPrice && <del>{price(product.oldPrice)}</del>}</div>
-            {product.prescription && <p className="detail__rx"><BadgeCheck size={16} /> Prescription medicine — our pharmacist will review your order before dispensing.</p>}
+            {isRx && (
+              <p className={`detail__rx ${isLocked ? 'detail__rx--locked' : ''}`}>
+                {isLocked ? <Lock size={16} /> : <BadgeCheck size={16} />}
+                {isLocked
+                  ? 'Prescription required — upload a valid prescription to unlock and purchase this medicine.'
+                  : 'Prescription medicine — your prescription has been verified. Our pharmacist will review your order before dispensing.'}
+              </p>
+            )}
             <p className="detail__desc">{product.description}</p>
-            <div className="detail__qty"><span>Quantity</span><div className="qty"><button onClick={() => setQuantity(Math.max(1, quantity - 1))}><Minus size={14} /></button><b>{quantity}</b><button onClick={() => setQuantity(quantity + 1)}><Plus size={14} /></button></div></div>
-            <Button onClick={add} className="detail__add"><ShoppingBag size={17} /> Add to cart · {price(product.price * quantity)}</Button>
+            {isLocked ? (
+              <div className="detail__locked-actions">
+                <input ref={fileRef} type="file" accept="image/*,application/pdf" onChange={onFileChange} hidden />
+                <Button onClick={() => fileRef.current?.click()} className="detail__upload-btn">
+                  {uploading ? 'Uploading…' : <><Upload size={17} /> Upload prescription</>}
+                </Button>
+                {!user && !demoUser && <Link to="/login" className="btn btn--outline detail__signin-link">Sign in first</Link>}
+              </div>
+            ) : (
+              <>
+                <div className="detail__qty"><span>Quantity</span><div className="qty"><button onClick={() => setQuantity(Math.max(1, quantity - 1))}><Minus size={14} /></button><b>{quantity}</b><button onClick={() => setQuantity(quantity + 1)}><Plus size={14} /></button></div></div>
+                <Button onClick={add} className="detail__add">
+                  {isRx && checkingApproval ? 'Checking prescription…' : <><ShoppingBag size={17} /> Add to cart · {price(product.price * quantity)}</>}
+                </Button>
+              </>
+            )}
             <div className="detail__notes"><span><Truck size={17} /> Free delivery over KSh 3,000</span><span><RefreshCw size={17} /> 7-day returns</span><span><ShieldCheck size={17} /> Secure checkout</span></div>
             <ul className="detail__list"><li><Check size={15} /> 100% genuine product</li><li><Check size={15} /> Sourced from verified suppliers</li><li><Check size={15} /> Pharmacist-reviewed orders</li></ul>
           </div>
@@ -47,5 +116,20 @@ export function ProductDetail() {
 
 function ProductCardSmall({ product }: { product: typeof products[number] }) {
   const { addItem } = useCart();
-  return <article className="pcard"><Link to={`/products/${product.id}`} className="pcard__media"><img src={product.image} alt={product.name} loading="lazy" />{product.tag && <span className="pcard__tag">{product.tag}</span>}<span className="pcard__view">View <ArrowRight size={13} /></span></Link><div className="pcard__body"><p className="pcard__brand">{product.brand}</p><Link to={`/products/${product.id}`} className="pcard__name">{product.name}</Link><div className="pcard__price"><strong>{price(product.price)}</strong>{product.oldPrice && <del>{price(product.oldPrice)}</del>}</div><Button onClick={() => addItem(product)} className="pcard__add">Add to cart</Button></div></article>;
+  const { user, demoUser } = useAuth();
+  const showToast = useToast();
+  const userId = user?.id ?? demoUser?.id ?? '';
+  const isRx = Boolean(product.prescription);
+  const { data: hasApproved } = useHasApprovedPrescription(userId);
+  const isLocked = isRx && !hasApproved;
+
+  const handleClick = () => {
+    if (isLocked) {
+      showToast('error', 'This medicine requires a prescription. Please upload one to unlock it.');
+      return;
+    }
+    addItem(product);
+  };
+
+  return <article className="pcard"><Link to={`/products/${product.id}`} className="pcard__media"><img src={product.image} alt={product.name} loading="lazy" />{product.tag && <span className="pcard__tag">{product.tag}</span>}<span className="pcard__view">View <ArrowRight size={13} /></span></Link><div className="pcard__body"><p className="pcard__brand">{product.brand}</p><Link to={`/products/${product.id}`} className="pcard__name">{product.name}</Link><div className="pcard__price"><strong>{price(product.price)}</strong>{product.oldPrice && <del>{price(product.oldPrice)}</del>}</div><Button onClick={handleClick} className="pcard__add">{isLocked ? <><Lock size={14} /> Rx required</> : 'Add to cart'}</Button></div></article>;
 }

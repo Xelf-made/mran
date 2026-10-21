@@ -1,8 +1,9 @@
-import { useState, type ReactNode } from 'react';
-import { ChevronLeft, ChevronRight, Clock, Edit3, Eye, Package, Plus, Search, TrendingUp, X } from 'lucide-react';
+import { useRef, useState, type ReactNode } from 'react';
+import { ChevronLeft, ChevronRight, Clock, Edit3, Eye, Image as ImageIcon, Loader2, Package, Plus, Search, TrendingUp, Upload, X } from 'lucide-react';
 import type { AdminProduct } from './types';
 import { price, productStatus } from './types';
 import { useAdminProducts, useSaveProduct, useDeleteProduct, useToggleStock } from '@/lib/queries';
+import { supabase } from '@/lib/supabase';
 
 const CATEGORIES = ['Medicines', 'Vitamins & Supplements', 'Personal Care', 'Mother & Baby', 'Medical Devices', 'Wellness'];
 const PAGE_SIZE = 20;
@@ -132,6 +133,57 @@ export function Products() {
   );
 }
 
+function ImageUploader({ currentUrl, onUploaded }: { currentUrl: string; onUploaded: (url: string) => void }) {
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const handleFile = async (file: File) => {
+    setError(null);
+    setUploading(true);
+    try {
+      const ext = file.name.split('.').pop() ?? 'jpg';
+      const fileName = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+      const { error: upErr } = await supabase.storage.from('product-images').upload(fileName, file, { cacheControl: '3600', upsert: false });
+      if (upErr) throw upErr;
+      const { data } = supabase.storage.from('product-images').getPublicUrl(fileName);
+      onUploaded(data.publicUrl);
+    } catch {
+      setError('Upload failed. Please try again.');
+    }
+    setUploading(false);
+  };
+
+  const onChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) handleFile(file);
+    e.target.value = '';
+  };
+
+  return (
+    <label className="auth__field">
+      <span>Product image</span>
+      <div className="image-uploader">
+        <input ref={inputRef} type="file" accept="image/*" onChange={onChange} hidden />
+        {currentUrl ? (
+          <div className="image-uploader__preview">
+            <img src={currentUrl} alt="Product preview" />
+            <button type="button" className="image-uploader__replace" onClick={() => inputRef.current?.click()}>
+              {uploading ? <Loader2 size={15} className="spin" /> : <Upload size={15} />} Replace
+            </button>
+          </div>
+        ) : (
+          <button type="button" className="image-uploader__drop" onClick={() => inputRef.current?.click()}>
+            {uploading ? <Loader2 size={24} className="spin" /> : <ImageIcon size={24} />}
+            <span>{uploading ? 'Uploading…' : 'Click to upload image'}</span>
+          </button>
+        )}
+        {error && <span className="image-uploader__error">{error}</span>}
+      </div>
+    </label>
+  );
+}
+
 function ProductModal({ editing, form, setForm, saving, error, onClose, onSave }: {
   editing: AdminProduct | null;
   form: Omit<AdminProduct, 'id'>;
@@ -180,7 +232,7 @@ function ProductModal({ editing, form, setForm, saving, error, onClose, onSave }
             {field('Rating (0-5)', 'rating', 'number')}
             {field('Reviews', 'reviews', 'number')}
           </div>
-          {field('Image URL', 'image', 'text', 'https://…')}
+          <ImageUploader currentUrl={form.image} onUploaded={(url) => setForm((prev) => ({ ...prev, image: url }))} />
           {field('Tag (optional)', 'tag', 'text', 'e.g. Best seller')}
           {field('Description', 'description', 'text', 'Product description')}
           <div className="account__notif-list">

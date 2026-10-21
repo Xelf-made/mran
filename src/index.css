@@ -272,6 +272,18 @@ img { display: block; max-width: 100%; }
 .detail__related { margin-top: 84px; }
 .detail__related .product-grid { margin-top: 36px; }
 
+/* Locked detail media (prescription required) */
+.detail__media--locked { position: relative; }
+.detail__media--locked img { filter: blur(8px); }
+.detail__lock-overlay { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; background: rgba(43,59,42,.55); color: #fff; border-radius: 14px; }
+.detail__lock-overlay svg { color: #7bc943; }
+.detail__lock-overlay span { font-size: 15px; font-weight: 800; }
+.detail__rx--locked { background: #fff3ee; color: #c4451a; }
+.detail__rx--locked svg { color: #c4451a; }
+.detail__locked-actions { display: flex; gap: 12px; align-items: center; margin: 24px 0; flex-wrap: wrap; }
+.detail__upload-btn { height: 54px; padding: 0 28px; font-size: 14px; }
+.detail__signin-link { height: 54px; }
+
 /* ===== Cart page ===== */
 .cart, .checkout { padding: 52px 0 84px; }
 .page-title { margin-bottom: 40px; }
@@ -679,6 +691,17 @@ img { display: block; max-width: 100%; }
 .admin__icon-btn--danger:hover { background: #fff3ee; color: #c4451a; }
 .admin__bar-right { display: flex; align-items: center; gap: 12px; }
 .admin__settings-actions { display: flex; gap: 12px; }
+
+/* Image uploader (admin product form) */
+.image-uploader { display: flex; flex-direction: column; gap: 8px; }
+.image-uploader__drop { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; width: 100%; min-height: 160px; border: 2px dashed #c8dcb0; border-radius: 12px; background: #fafff5; color: #5a704e; font-size: 14px; font-weight: 600; cursor: pointer; transition: border-color .2s, background .2s; }
+.image-uploader__drop:hover { border-color: #7bc943; background: #f0f9e6; }
+.image-uploader__drop svg { color: #4f8f21; }
+.image-uploader__preview { position: relative; width: 100%; }
+.image-uploader__preview img { width: 100%; max-height: 220px; object-fit: cover; border-radius: 12px; border: 1px solid #edf2e6; }
+.image-uploader__replace { position: absolute; bottom: 10px; right: 10px; display: flex; align-items: center; gap: 6px; padding: 8px 14px; border-radius: 8px; background: rgba(43,59,42,.85); color: #fff; font-size: 13px; font-weight: 700; border: none; cursor: pointer; transition: background .15s; }
+.image-uploader__replace:hover { background: #2b3b2a; }
+.image-uploader__error { font-size: 12px; color: #c4451a; font-weight: 600; }
 
 /* ===== Analytics ===== */
 .analytics__grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
