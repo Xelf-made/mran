@@ -893,6 +893,94 @@ img { display: block; max-width: 100%; }
 /* ===== Prescription portal page ===== */
 .rx-portal { padding: 56px 0 80px; }
 
+/* ===== Prescription upload — two-column layout ===== */
+.rx-upload-layout { display: grid; grid-template-columns: 1fr 380px; gap: 32px; align-items: start; }
+
+/* Left column */
+.rx-upload-left { display: flex; flex-direction: column; gap: 20px; }
+.rx-upload-left__head { display: flex; align-items: center; gap: 16px; }
+.rx-upload-left__icon { display: grid; place-items: center; width: 52px; height: 52px; border-radius: 14px; background: linear-gradient(135deg, #4f8f21, #7bc943); color: #fff; flex-shrink: 0; box-shadow: 0 4px 14px rgba(79,143,33,.25); }
+.rx-upload-left__head h2 { margin: 0; font-size: 24px; font-weight: 900; color: #1f2e1a; letter-spacing: -.01em; }
+.rx-upload-left__head p { margin: 4px 0 0; font-size: 14px; color: #6a8460; }
+
+/* Action buttons */
+.rx-action-buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.rx-action-btn { display: flex; align-items: center; gap: 14px; padding: 20px 22px; border-radius: 14px; background: #fff; border: 2px solid #e0ead4; text-align: left; transition: border-color .2s, box-shadow .2s, transform .15s; position: relative; overflow: hidden; }
+.rx-action-btn:hover { border-color: #b8d890; box-shadow: 0 6px 20px rgba(43,59,42,.06); transform: translateY(-2px); }
+.rx-action-btn--active { border-color: #4f8f21; box-shadow: 0 6px 20px rgba(79,143,33,.12); }
+.rx-action-btn--active::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: linear-gradient(90deg, #4f8f21, #7bc943); }
+.rx-action-btn__icon { display: grid; place-items: center; width: 48px; height: 48px; border-radius: 12px; flex-shrink: 0; transition: transform .2s; }
+.rx-action-btn:hover .rx-action-btn__icon { transform: scale(1.06); }
+.rx-action-btn__icon--orange { background: linear-gradient(135deg, #f45113, #ff7842); color: #fff; box-shadow: 0 4px 12px rgba(244,81,19,.2); }
+.rx-action-btn__icon--green { background: linear-gradient(135deg, #4f8f21, #7bc943); color: #fff; box-shadow: 0 4px 12px rgba(79,143,33,.2); }
+.rx-action-btn__body { flex: 1; min-width: 0; }
+.rx-action-btn__body strong { display: block; font-size: 15px; font-weight: 800; color: #1f2e1a; }
+.rx-action-btn__body span { display: block; font-size: 12px; color: #6a8460; margin-top: 3px; }
+.rx-action-btn__arrow { color: #b8c9a8; flex-shrink: 0; transition: transform .2s, color .2s; }
+.rx-action-btn:hover .rx-action-btn__arrow { transform: translateX(4px); color: #4f8f21; }
+.rx-action-btn--active .rx-action-btn__arrow { color: #4f8f21; }
+
+/* Panel container */
+.rx-panel { background: #fff; border: 1px solid #e0ead4; border-radius: 16px; padding: 24px; min-height: 280px; }
+
+/* Mini steps row */
+.rx-panel__steps { display: flex; align-items: center; gap: 8px; margin-top: 20px; padding-top: 20px; border-top: 1px solid #f0f5e8; flex-wrap: wrap; }
+.rx-panel__step { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 700; color: #5a704e; }
+.rx-panel__step svg { color: #4f8f21; }
+.rx-panel__step-num { display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: #f5f9ec; color: #4f8f21; font-size: 11px; font-weight: 900; }
+
+/* ===== Right column — prescription guide card ===== */
+.rx-guide { position: sticky; top: 110px; background: #fff; border: 1px solid #e0ead4; border-radius: 18px; overflow: hidden; box-shadow: 0 4px 20px rgba(43,59,42,.05); }
+.rx-guide__head { display: flex; align-items: center; gap: 14px; padding: 24px 24px 20px; background: linear-gradient(135deg, #1f3a1f 0%, #2b5c10 100%); color: #fff; }
+.rx-guide__head-icon { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 11px; background: rgba(255,255,255,.12); color: #7bc943; flex-shrink: 0; }
+.rx-guide__head h3 { margin: 0; font-size: 16px; font-weight: 800; color: #fff; line-height: 1.3; }
+.rx-guide__head p { margin: 4px 0 0; font-size: 12px; color: #a8c898; }
+
+/* Document mockup */
+.rx-guide__doc { margin: 20px; padding: 24px; background: #fafff7; border: 1px solid #e0ead4; border-radius: 12px; position: relative; }
+.rx-guide__doc-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+.rx-guide__doc-logo { display: flex; align-items: center; gap: 6px; padding: 6px 14px; border-radius: 8px; background: linear-gradient(135deg, #4f8f21, #7bc943); color: #fff; font-size: 13px; font-weight: 900; }
+.rx-guide__doc-stamp { padding: 4px 12px; border-radius: 6px; border: 2px solid #4f8f21; color: #4f8f21; font-size: 10px; font-weight: 900; letter-spacing: .1em; transform: rotate(-4deg); }
+.rx-guide__doc-patient { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
+.rx-guide__doc-line { display: flex; align-items: center; gap: 8px; font-size: 12px; }
+.rx-guide__doc-label { font-weight: 700; color: #5a704e; white-space: nowrap; }
+.rx-guide__doc-value { color: #b8c9a8; letter-spacing: .02em; }
+.rx-guide__doc-rx-symbol { font-size: 28px; font-weight: 900; color: #4f8f21; font-style: italic; margin-bottom: 12px; line-height: 1; }
+.rx-guide__doc-meds { display: flex; flex-direction: column; gap: 10px; margin-bottom: 24px; }
+.rx-guide__doc-med-line { height: 8px; border-radius: 4px; background: #e0ead4; }
+.rx-guide__doc-med-line--short { width: 60%; }
+.rx-guide__doc-signoff { display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; padding-top: 16px; border-top: 1px dashed #d0e6bc; }
+.rx-guide__doc-signature { display: flex; flex-direction: column; gap: 6px; flex: 1; }
+.rx-guide__doc-sig-line { height: 40px; border-bottom: 2px solid #6a8460; margin-bottom: 2px; position: relative; }
+.rx-guide__doc-sig-line::after { content: '~'; position: absolute; bottom: -8px; left: 10px; font-size: 24px; color: #4f8f21; font-style: italic; font-weight: 700; }
+.rx-guide__doc-signature span { font-size: 10px; color: #94a884; font-weight: 600; }
+.rx-guide__doc-stamp-box { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.rx-guide__doc-stamp-circle { display: flex; flex-direction: column; align-items: center; justify-content: center; width: 56px; height: 56px; border-radius: 50%; border: 2.5px dashed #4f8f21; color: #4f8f21; gap: 0; }
+.rx-guide__doc-stamp-circle small { font-size: 9px; font-weight: 900; letter-spacing: .05em; }
+.rx-guide__doc-stamp-box span { font-size: 10px; color: #94a884; font-weight: 600; }
+
+/* Checklist */
+.rx-guide__checklist { list-style: none; margin: 0; padding: 0 24px; display: grid; gap: 12px; }
+.rx-guide__checklist li { display: flex; align-items: flex-start; gap: 10px; font-size: 13px; color: #3a4e36; line-height: 1.5; }
+.rx-guide__checklist svg { color: #4f8f21; flex-shrink: 0; margin-top: 2px; }
+.rx-guide__checklist strong { font-weight: 800; color: #1f2e1a; }
+
+/* Help footer */
+.rx-guide__help { display: flex; align-items: center; gap: 14px; padding: 20px 24px; margin-top: 20px; background: #fff5ee; border-top: 1px solid #f0e0d4; }
+.rx-guide__help svg { color: #f45113; flex-shrink: 0; }
+.rx-guide__help strong { display: block; font-size: 13px; font-weight: 800; color: #c4451a; }
+.rx-guide__help span { display: block; font-size: 12px; color: #a0603a; margin-top: 2px; line-height: 1.5; }
+
+/* Responsive */
+@media (max-width: 1024px) {
+  .rx-upload-layout { grid-template-columns: 1fr; }
+  .rx-guide { position: static; }
+}
+@media (max-width: 768px) {
+  .rx-action-buttons { grid-template-columns: 1fr; }
+  .rx-guide__doc-signoff { flex-direction: column; align-items: flex-start; gap: 16px; }
+}
+
 /* Step-by-step progress guide */
 .rx-steps { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 48px; position: relative; }
 .rx-step { position: relative; padding: 24px 22px 26px; background: #fff; border: 1px solid #e8efde; border-radius: 14px; display: flex; flex-direction: column; gap: 16px; box-shadow: 0 1px 3px rgba(43,59,42,.04); transition: border-color .2s, box-shadow .2s; }

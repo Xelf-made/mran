@@ -1,24 +1,19 @@
 import { useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { AlertCircle, ArrowRight, Check, Clock, Download, FileText, Lock, RotateCcw, ShieldCheck, Stethoscope, Upload, X } from 'lucide-react';
+import { AlertCircle, ArrowRight, Check, Clock, Download, FileText, History, Lock, Pill, RotateCcw, ShieldCheck, Stethoscope, Upload, X } from 'lucide-react';
 import { PageShell } from '@/components/PageShell';
 import { useAuth } from '@/contexts/useAuth';
 import { useCustomerPrescriptions, useUploadPrescription, type PrescriptionStatus } from '@/lib/queries';
 import { useCustomerPrescriptionRealtime } from '@/lib/usePrescriptionsRealtime';
 import { useToast } from '@/components/Toast';
 
+type Panel = 'upload' | 'history';
+
 const statusConfig: Record<PrescriptionStatus, { label: string; cls: string; icon: typeof Clock }> = {
   pending: { label: 'Pending', cls: 'rx-badge--pending', icon: Clock },
   approved: { label: 'Approved', cls: 'rx-badge--approved', icon: Check },
   rejected: { label: 'Rejected', cls: 'rx-badge--rejected', icon: X },
 };
-
-const steps = [
-  { num: '01', icon: Upload, title: 'Upload Script', text: 'Snap a clear photo or upload a PDF of your doctor\'s prescription. JPG, PNG, and PDF supported up to 10 MB.' },
-  { num: '02', icon: Stethoscope, title: '30-Min Pharmacist Review', text: 'A licensed PPB pharmacist verifies your script — typically within 30 minutes during business hours.' },
-  { num: '03', icon: ShieldCheck, title: 'Secure Unlock', text: 'Once approved, prescription-only medicines unlock in your cart. Check out securely with M-Pesa or card.' },
-  { num: '04', icon: RotateCcw, title: 'Fast Reorder', text: 'Approved prescriptions are saved to your account for quick refills. View pharmacist notes and download anytime.' },
-];
 
 const MAX_SIZE = 10 * 1024 * 1024;
 const ACCEPTED = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'application/pdf'];
@@ -36,6 +31,7 @@ export function PrescriptionsPage() {
   const { user, demoUser } = useAuth();
   const showToast = useToast();
   const fileRef = useRef<HTMLInputElement>(null);
+  const [panel, setPanel] = useState<Panel>('upload');
   const [uploading, setUploading] = useState(false);
   const [dragActive, setDragActive] = useState(false);
   const [viewerUrl, setViewerUrl] = useState<string | null>(null);
@@ -49,6 +45,11 @@ export function PrescriptionsPage() {
   const uploadMutation = useUploadPrescription();
 
   useCustomerPrescriptionRealtime(userId);
+
+  const list = prescriptions ?? [];
+  const pendingCount = list.filter((rx) => rx.status === 'pending').length;
+  const approvedCount = list.filter((rx) => rx.status === 'approved').length;
+  const notesRx = list.find((rx) => rx.id === notesRxId);
 
   const validateFile = (file: File): string | null => {
     if (!ACCEPTED.includes(file.type)) return 'Unsupported file type. Please upload a JPG, PNG, or PDF.';
@@ -70,6 +71,7 @@ export function PrescriptionsPage() {
     try {
       await uploadMutation.mutateAsync({ file, userId, fileName: file.name });
       showToast('success', 'Prescription uploaded. A pharmacist will review it within 30 minutes.');
+      setPanel('history');
     } catch {
       showToast('error', 'Could not upload prescription. Please try again.');
     }
@@ -89,66 +91,18 @@ export function PrescriptionsPage() {
     if (file) handleFile(file);
   };
 
-  const list = prescriptions ?? [];
-  const notesRx = list.find((rx) => rx.id === notesRxId);
-
-  const pendingCount = list.filter((rx) => rx.status === 'pending').length;
-  const approvedCount = list.filter((rx) => rx.status === 'approved').length;
-
   return (
     <PageShell>
       <section className="page-hero page-hero--rx">
         <div className="shell">
-          <span className="eyebrow">Prescription portal</span>
+          <span className="eyebrow"><Pill size={14} /> Prescription Portal</span>
           <h1>Upload, verify &amp; order your prescription medicines</h1>
           <p>Our licensed pharmacists review every prescription — usually within 30 minutes — so you can shop safely and conveniently.</p>
         </div>
       </section>
 
       <section className="shell rx-portal">
-        {/* Step-by-step progress guide */}
-        <div className="rx-steps">
-          {steps.map((step, i) => (
-            <div className="rx-step" key={step.num}>
-              <div className="rx-step__header">
-                <div className="rx-step__icon"><step.icon size={22} /></div>
-                <span className="rx-step__num">{step.num}</span>
-              </div>
-              <div className="rx-step__body">
-                <h3>{step.title}</h3>
-                <p>{step.text}</p>
-              </div>
-              {i < steps.length - 1 && <div className="rx-step__connector" aria-hidden="true" />}
-            </div>
-          ))}
-        </div>
-
-        {/* Upload dropzone or sign-in CTA */}
-        {isLoggedIn ? (
-          isDemo ? (
-            <div className="rx-portal__demo-banner">
-              <Check size={16} /> Demo mode — prescription uploads require a real account. Sign up to upload scripts and unlock Rx products.
-            </div>
-          ) : (
-            <div
-              className={`rx-dropzone ${dragActive ? 'rx-dropzone--active' : ''} ${uploading ? 'rx-dropzone--loading' : ''}`}
-              onDragOver={(e) => { e.preventDefault(); setDragActive(true); }}
-              onDragLeave={() => setDragActive(false)}
-              onDrop={onDrop}
-              onClick={() => !uploading && fileRef.current?.click()}
-            >
-              <input ref={fileRef} type="file" accept="image/*,application/pdf" onChange={onInputChange} hidden />
-              <div className="rx-dropzone__icon">
-                {uploading ? <Clock size={32} className="spin" /> : dragActive ? <Upload size={32} /> : <Upload size={32} />}
-              </div>
-              <div className="rx-dropzone__text">
-                <strong>{uploading ? 'Uploading your prescription…' : dragActive ? 'Release to upload' : 'Drop your prescription here or click to browse'}</strong>
-                <span>JPG, PNG, or PDF · Max 10 MB · Reviewed within 30 minutes</span>
-              </div>
-              {!uploading && <div className="rx-dropzone__browse">Browse files</div>}
-            </div>
-          )
-        ) : (
+        {!isLoggedIn ? (
           <div className="rx-portal__auth-cta">
             <Lock size={32} />
             <h2>Sign in to upload your prescription</h2>
@@ -158,100 +112,240 @@ export function PrescriptionsPage() {
               <Link to="/signup" className="btn btn--outline">Create free account</Link>
             </div>
           </div>
-        )}
+        ) : (
+          <div className="rx-upload-layout">
+            {/* Left column — upload + history actions */}
+            <div className="rx-upload-left">
+              <div className="rx-upload-left__head">
+                <span className="rx-upload-left__icon"><Upload size={22} /></span>
+                <div>
+                  <h2>Upload Prescription</h2>
+                  <p>Submit your doctor's script for pharmacist review</p>
+                </div>
+              </div>
 
-        {/* Quick stats */}
-        {isLoggedIn && !isDemo && list.length > 0 && (
-          <div className="rx-stats">
-            <div className="rx-stat"><span className="rx-stat__value">{list.length}</span><span className="rx-stat__label">Total scripts</span></div>
-            <div className="rx-stat rx-stat--pending"><span className="rx-stat__value">{pendingCount}</span><span className="rx-stat__label">Pending review</span></div>
-            <div className="rx-stat rx-stat--approved"><span className="rx-stat__value">{approvedCount}</span><span className="rx-stat__label">Approved</span></div>
-          </div>
-        )}
+              {/* Action buttons */}
+              <div className="rx-action-buttons">
+                <button
+                  className={`rx-action-btn ${panel === 'upload' ? 'rx-action-btn--active' : ''}`}
+                  onClick={() => setPanel('upload')}
+                >
+                  <span className="rx-action-btn__icon rx-action-btn__icon--orange"><Upload size={20} /></span>
+                  <div className="rx-action-btn__body">
+                    <strong>Upload New</strong>
+                    <span>Snap or browse a fresh prescription</span>
+                  </div>
+                  <ArrowRight size={18} className="rx-action-btn__arrow" />
+                </button>
 
-        {/* Prescription history table */}
-        {isLoggedIn && !isDemo && (
-          <div className="rx-history">
-            <div className="rx-history__head">
-              <h2>Your prescription history</h2>
-              <span className="rx-history__count">{list.length} {list.length === 1 ? 'record' : 'records'}</span>
+                <button
+                  className={`rx-action-btn ${panel === 'history' ? 'rx-action-btn--active' : ''}`}
+                  onClick={() => setPanel('history')}
+                >
+                  <span className="rx-action-btn__icon rx-action-btn__icon--green"><History size={20} /></span>
+                  <div className="rx-action-btn__body">
+                    <strong>Past Prescriptions</strong>
+                    <span>{list.length > 0 ? `${list.length} on file — view & reorder` : 'No records yet'}</span>
+                  </div>
+                  <ArrowRight size={18} className="rx-action-btn__arrow" />
+                </button>
+              </div>
+
+              {/* Panel content */}
+              {panel === 'upload' ? (
+                <div className="rx-panel">
+                  {isDemo ? (
+                    <div className="account__demo-banner">
+                      <Check size={16} /> Demo mode — prescription uploads require a real account. Sign up to upload scripts and unlock Rx products.
+                    </div>
+                  ) : (
+                    <>
+                      <div
+                        className={`rx-dropzone ${dragActive ? 'rx-dropzone--active' : ''} ${uploading ? 'rx-dropzone--loading' : ''}`}
+                        onDragOver={(e) => { e.preventDefault(); setDragActive(true); }}
+                        onDragLeave={() => setDragActive(false)}
+                        onDrop={onDrop}
+                        onClick={() => !uploading && fileRef.current?.click()}
+                      >
+                        <input ref={fileRef} type="file" accept="image/*,application/pdf" onChange={onInputChange} hidden />
+                        <div className="rx-dropzone__icon">
+                          {uploading ? <Clock size={32} className="spin" /> : <Upload size={32} />}
+                        </div>
+                        <div className="rx-dropzone__text">
+                          <strong>{uploading ? 'Uploading your prescription…' : dragActive ? 'Release to upload' : 'Drop your prescription here or click to browse'}</strong>
+                          <span>JPG, PNG, or PDF · Max 10 MB · Reviewed within 30 minutes</span>
+                        </div>
+                        {!uploading && <div className="rx-dropzone__browse">Browse files</div>}
+                      </div>
+
+                      <div className="rx-panel__steps">
+                        <div className="rx-panel__step"><span className="rx-panel__step-num">1</span><Upload size={16} /><span>Upload your script</span></div>
+                        <div className="rx-panel__step"><span className="rx-panel__step-num">2</span><Stethoscope size={16} /><span>Pharmacist reviews in 30 min</span></div>
+                        <div className="rx-panel__step"><span className="rx-panel__step-num">3</span><ShieldCheck size={16} /><span>Rx products unlock in your cart</span></div>
+                      </div>
+                    </>
+                  )}
+                </div>
+              ) : (
+                <div className="rx-panel">
+                  {/* Quick stats */}
+                  {list.length > 0 && (
+                    <div className="rx-stats">
+                      <div className="rx-stat"><span className="rx-stat__value">{list.length}</span><span className="rx-stat__label">Total scripts</span></div>
+                      <div className="rx-stat rx-stat--pending"><span className="rx-stat__value">{pendingCount}</span><span className="rx-stat__label">Pending review</span></div>
+                      <div className="rx-stat rx-stat--approved"><span className="rx-stat__value">{approvedCount}</span><span className="rx-stat__label">Approved</span></div>
+                    </div>
+                  )}
+
+                  {isDemo ? (
+                    <div className="account__demo-banner"><Check size={16} /> Demo mode — prescription history requires a real account.</div>
+                  ) : isLoading ? (
+                    <div className="track-loading"><FileText className="spin" size={28} /><p>Loading prescriptions…</p></div>
+                  ) : error ? (
+                    <div className="auth__error"><AlertCircle size={16} /> Could not load your prescriptions. Please try again.</div>
+                  ) : list.length === 0 ? (
+                    <div className="rx-history__empty">
+                      <FileText size={36} />
+                      <h3>No prescriptions yet</h3>
+                      <p>Upload a doctor's prescription to unlock prescription-only products.</p>
+                      <button className="btn btn--primary btn--sm" onClick={() => setPanel('upload')}><Upload size={15} /> Upload now</button>
+                    </div>
+                  ) : (
+                    <div className="rx-table-wrap">
+                      <table className="rx-table">
+                        <thead>
+                          <tr>
+                            <th>Document</th>
+                            <th>Status</th>
+                            <th>Submitted</th>
+                            <th>Notes</th>
+                            <th>Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {list.map((rx) => {
+                            const cfg = statusConfig[rx.status];
+                            const StatusIcon = cfg.icon;
+                            return (
+                              <tr key={rx.id}>
+                                <td>
+                                  <div className="rx-table__doc">
+                                    <FileText size={16} />
+                                    <span>{rx.file_name || 'Prescription'}</span>
+                                  </div>
+                                </td>
+                                <td>
+                                  <span className={`rx-badge ${cfg.cls}`}>
+                                    <StatusIcon size={13} /> {cfg.label}
+                                  </span>
+                                </td>
+                                <td className="rx-table__date">{formatDateTime(rx.created_at)}</td>
+                                <td>
+                                  {rx.pharmacist_notes ? (
+                                    <button className="rx-table__notes-btn" onClick={() => setNotesRxId(rx.id)}>
+                                      <FileText size={13} /> View note
+                                    </button>
+                                  ) : (
+                                    <span className="rx-table__no-notes">—</span>
+                                  )}
+                                </td>
+                                <td>
+                                  <div className="rx-table__actions">
+                                    <button className="btn btn--outline btn--sm" onClick={() => { setViewerUrl(fileUrl(rx.file_url)); setViewerName(rx.file_name || 'Prescription'); }}>
+                                      View
+                                    </button>
+                                    <a className="btn btn--ghost btn--sm" href={fileUrl(rx.file_url)} download={rx.file_name || 'prescription'} target="_blank" rel="noreferrer" title="Download">
+                                      <Download size={14} />
+                                    </a>
+                                  </div>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Trust indicators */}
+              <div className="rx-portal__trust">
+                <div className="rx-portal__trust-item"><Check size={18} /> Reviewed by licensed PPB pharmacists</div>
+                <div className="rx-portal__trust-item"><Check size={18} /> Secure &amp; confidential</div>
+                <div className="rx-portal__trust-item"><RotateCcw size={18} /> Reorder from approved scripts</div>
+              </div>
             </div>
 
-            {isLoading ? (
-              <div className="track-loading"><FileText className="spin" size={28} /><p>Loading prescriptions…</p></div>
-            ) : error ? (
-              <div className="auth__error"><AlertCircle size={16} /> Could not load your prescriptions. Please try again.</div>
-            ) : list.length === 0 ? (
-              <div className="rx-history__empty">
-                <FileText size={36} />
-                <h3>No prescriptions yet</h3>
-                <p>Upload a doctor's prescription above to unlock prescription-only products.</p>
+            {/* Right column — valid prescription guide card */}
+            <div className="rx-guide">
+              <div className="rx-guide__head">
+                <span className="rx-guide__head-icon"><ShieldCheck size={20} /></span>
+                <div>
+                  <h3>What makes a valid prescription?</h3>
+                  <p>Make sure your document includes these details for fast approval</p>
+                </div>
               </div>
-            ) : (
-              <div className="rx-table-wrap">
-                <table className="rx-table">
-                  <thead>
-                    <tr>
-                      <th>Document</th>
-                      <th>Status</th>
-                      <th>Submitted</th>
-                      <th>Pharmacist notes</th>
-                      <th>Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {list.map((rx) => {
-                      const cfg = statusConfig[rx.status];
-                      const StatusIcon = cfg.icon;
-                      return (
-                        <tr key={rx.id}>
-                          <td>
-                            <div className="rx-table__doc">
-                              <FileText size={16} />
-                              <span>{rx.file_name || 'Prescription'}</span>
-                            </div>
-                          </td>
-                          <td>
-                            <span className={`rx-badge ${cfg.cls}`}>
-                              <StatusIcon size={13} /> {cfg.label}
-                            </span>
-                          </td>
-                          <td className="rx-table__date">{formatDateTime(rx.created_at)}</td>
-                          <td>
-                            {rx.pharmacist_notes ? (
-                              <button className="rx-table__notes-btn" onClick={() => setNotesRxId(rx.id)}>
-                                <FileText size={13} /> View note
-                              </button>
-                            ) : (
-                              <span className="rx-table__no-notes">—</span>
-                            )}
-                          </td>
-                          <td>
-                            <div className="rx-table__actions">
-                              <button className="btn btn--outline btn--sm" onClick={() => { setViewerUrl(fileUrl(rx.file_url)); setViewerName(rx.file_name || 'Prescription'); }}>
-                                View
-                              </button>
-                              <a className="btn btn--ghost btn--sm" href={fileUrl(rx.file_url)} download={rx.file_name || 'prescription'} target="_blank" rel="noreferrer" title="Download">
-                                <Download size={14} />
-                              </a>
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
+
+              {/* Document placeholder mockup */}
+              <div className="rx-guide__doc">
+                <div className="rx-guide__doc-header">
+                  <div className="rx-guide__doc-logo">
+                    <Pill size={16} /> <span>Rx</span>
+                  </div>
+                  <div className="rx-guide__doc-stamp">VERIFIED</div>
+                </div>
+
+                <div className="rx-guide__doc-patient">
+                  <div className="rx-guide__doc-line"><span className="rx-guide__doc-label">Patient:</span><span className="rx-guide__doc-value">____________________</span></div>
+                  <div className="rx-guide__doc-line"><span className="rx-guide__doc-label">Date:</span><span className="rx-guide__doc-value">__/__/____</span></div>
+                  <div className="rx-guide__doc-line"><span className="rx-guide__doc-label">Age:</span><span className="rx-guide__doc-value">____</span></div>
+                </div>
+
+                <div className="rx-guide__doc-rx-symbol">Rx</div>
+
+                <div className="rx-guide__doc-meds">
+                  <div className="rx-guide__doc-med-line" />
+                  <div className="rx-guide__doc-med-line rx-guide__doc-med-line--short" />
+                  <div className="rx-guide__doc-med-line" />
+                  <div className="rx-guide__doc-med-line rx-guide__doc-med-line--short" />
+                </div>
+
+                <div className="rx-guide__doc-signoff">
+                  <div className="rx-guide__doc-signature">
+                    <div className="rx-guide__doc-sig-line" />
+                    <span>Doctor's signature</span>
+                  </div>
+                  <div className="rx-guide__doc-stamp-box">
+                    <div className="rx-guide__doc-stamp-circle">
+                      <ShieldCheck size={22} />
+                      <small>PPB</small>
+                    </div>
+                    <span>Official stamp</span>
+                  </div>
+                </div>
               </div>
-            )}
+
+              {/* Checklist */}
+              <ul className="rx-guide__checklist">
+                <li><Check size={16} /> <strong>Patient name &amp; age</strong> — must match your account</li>
+                <li><Check size={16} /> <strong>Date of issue</strong> — prescriptions are valid for 6 months</li>
+                <li><Check size={16} /> <strong>Medicine &amp; dosage</strong> — clearly written or printed</li>
+                <li><Check size={16} /> <strong>Doctor's signature</strong> — signed by a licensed practitioner</li>
+                <li><Check size={16} /> <strong>PPB registration number</strong> &amp; official stamp</li>
+              </ul>
+
+              {/* Help footer */}
+              <div className="rx-guide__help">
+                <Stethoscope size={18} />
+                <div>
+                  <strong>Not sure if your prescription is valid?</strong>
+                  <span>Ask a pharmacist — we'll review it and guide you through the process.</span>
+                </div>
+              </div>
+            </div>
           </div>
         )}
-
-        {/* Trust indicators */}
-        <div className="rx-portal__trust">
-          <div className="rx-portal__trust-item"><Check size={18} /> Reviewed by licensed PPB pharmacists</div>
-          <div className="rx-portal__trust-item"><Check size={18} /> Secure &amp; confidential — HIPAA-style privacy</div>
-          <div className="rx-portal__trust-item"><Check size={18} /> 30-minute review during business hours</div>
-        </div>
       </section>
 
       {/* Document viewer modal */}
