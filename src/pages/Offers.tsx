@@ -3,7 +3,6 @@ import { Link } from 'react-router-dom';
 import { ArrowRight, BadgePercent, SlidersHorizontal, TrendingDown, Truck } from 'lucide-react';
 import { PageShell } from '@/components/PageShell';
 import { useProductsCatalog, useStoreSettings } from '@/lib/queries';
-import { products as staticProducts } from '@/data/products';
 
 interface DiscountedProduct {
   id: number;
@@ -35,21 +34,13 @@ export function OffersPage() {
   const [sort, setSort] = useState<SortKey>('biggest-savings');
   const [bannerIdx, setBannerIdx] = useState(0);
 
-  const { data: catalogData } = useProductsCatalog();
+  const { data: catalogData, isLoading } = useProductsCatalog();
   const { data: settings } = useStoreSettings();
 
-  // Aggregate products with active discounts (old_price > price)
+  // Aggregate products with active discounts (old_price > price) from live DB only
   const discountedProducts = useMemo<DiscountedProduct[]>(() => {
-    const source = catalogData && catalogData.length > 0
-      ? catalogData
-      : staticProducts.map((p) => ({
-          id: p.id, name: p.name, brand: p.brand, category: p.category,
-          price: p.price, old_price: p.oldPrice, image: p.image, tag: p.tag,
-          is_new: p.isNew, prescription: p.prescription, rating: p.rating,
-          reviews: p.reviews, stock: 100, sales: 0, description: p.description,
-        }));
-
-    const withDiscount = (source as DiscountedProduct[]).filter(
+    if (!catalogData) return [];
+    const withDiscount = (catalogData as DiscountedProduct[]).filter(
       (p) => p.old_price !== null && p.old_price > p.price
     );
 
@@ -156,7 +147,20 @@ export function OffersPage() {
           </div>
         </div>
 
-        {discountedProducts.length === 0 ? (
+        {isLoading ? (
+          <div className="offers__product-grid">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="offer-product offer-product--skeleton">
+                <div className="offer-product__media skeleton" />
+                <div className="offer-product__body">
+                  <div className="skeleton skeleton--text skeleton--brand" />
+                  <div className="skeleton skeleton--text skeleton--name" />
+                  <div className="skeleton skeleton--text skeleton--short" />
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : discountedProducts.length === 0 ? (
           <div className="rx-history__empty">
             <BadgePercent size={36} />
             <h3>No active discounts right now</h3>

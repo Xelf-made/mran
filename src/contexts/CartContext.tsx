@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useReducer, type ReactNode } from 'react';
 import { CartContext, type CartAction, type CartLine } from './cart-context';
-import type { Product } from '@/data/products';
+import type { Product } from '@/lib/types';
 
 function reducer(items: CartLine[], action: CartAction): CartLine[] {
   if (action.type === 'add') {

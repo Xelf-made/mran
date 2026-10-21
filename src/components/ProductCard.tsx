@@ -2,7 +2,7 @@ import { useRef, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight, Lock, Upload } from 'lucide-react';
 import { useCart } from '@/contexts/cart-context';
-import { type Product } from '@/data/products';
+import { type Product } from '@/lib/types';
 import { useAuth } from '@/contexts/useAuth';
 import { useHasApprovedPrescription, useUploadPrescription } from '@/lib/queries';
 import { useCustomerPrescriptionRealtime } from '@/lib/usePrescriptionsRealtime';
@@ -85,6 +85,20 @@ export function ProductCard({ product }: { product: Product }) {
         ) : (
           <Button onClick={() => addItem(product)} className="pcard__add">Add to cart</Button>
         )}
+      </div>
+    </article>
+  );
+}
+
+export function ProductCardSkeleton() {
+  return (
+    <article className="pcard pcard--skeleton">
+      <div className="pcard__media skeleton" />
+      <div className="pcard__body">
+        <div className="skeleton skeleton--text skeleton--brand" />
+        <div className="skeleton skeleton--text skeleton--name" />
+        <div className="skeleton skeleton--text skeleton--short" />
+        <div className="skeleton skeleton--btn" />
       </div>
     </article>
   );

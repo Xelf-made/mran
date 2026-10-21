@@ -4,7 +4,7 @@ import { useAuth } from '@/contexts/useAuth';
 import { useWishlist, useRemoveWishlistItem, type WishlistItem } from '@/lib/queries';
 import { useCart } from '@/contexts/cart-context';
 import { demoWishlist } from '@/data/demo';
-import type { Product } from '@/data/products';
+import type { Product } from '@/lib/types';
 import { price } from './shared';
 
 interface NormalizedWish {

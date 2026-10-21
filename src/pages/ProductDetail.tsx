@@ -1,9 +1,10 @@
-import { useRef, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, ArrowRight, BadgeCheck, Check, Lock, Minus, Plus, RefreshCw, ShieldCheck, ShoppingBag, Truck, Upload } from 'lucide-react';
+import { ArrowLeft, ArrowRight, BadgeCheck, Check, Lock, Minus, Package, Plus, RefreshCw, ShieldCheck, ShoppingBag, Truck, Upload } from 'lucide-react';
 import { Button, Stars } from '@/components/ProductCard';
 import { PageShell } from '@/components/PageShell';
-import { products } from '@/data/products';
+import { useProductsCatalog } from '@/lib/queries';
+import { mapToProduct, type Product } from '@/lib/types';
 import { useCart } from '@/contexts/cart-context';
 import { useAuth } from '@/contexts/useAuth';
 import { useHasApprovedPrescription, useUploadPrescription } from '@/lib/queries';
@@ -14,13 +15,27 @@ const price = (value: number) => `KSh ${value.toLocaleString()}`;
 
 export function ProductDetail() {
   const { id } = useParams();
-  const product = products.find((item) => item.id === Number(id));
+  const { data: liveProducts, isLoading, isError, refetch } = useProductsCatalog();
   const { addItem } = useCart();
   const { user, demoUser } = useAuth();
   const showToast = useToast();
   const navigate = useNavigate();
   const [quantity, setQuantity] = useState(1);
   const fileRef = useRef<HTMLInputElement>(null);
+
+  const product: Product | undefined = useMemo(() => {
+    if (!liveProducts) return undefined;
+    const row = liveProducts.find((p) => p.id === Number(id));
+    return row ? mapToProduct(row) : undefined;
+  }, [liveProducts, id]);
+
+  const related: Product[] = useMemo(() => {
+    if (!liveProducts || !product) return [];
+    return liveProducts
+      .filter((p) => p.category === product.category && p.id !== product.id)
+      .slice(0, 4)
+      .map(mapToProduct);
+  }, [liveProducts, product]);
 
   const userId = user?.id ?? demoUser?.id ?? '';
   const isRx = Boolean(product?.prescription);
@@ -29,10 +44,13 @@ export function ProductDetail() {
   const uploadMutation = useUploadPrescription();
   const [uploading, setUploading] = useState(false);
 
+  if (isLoading) return <PageShell><div className="shell detail"><div className="detail__skeleton"><div className="skeleton skeleton--media" /><div className="skeleton skeleton--info" /></div></div></PageShell>;
+
+  if (isError) return <PageShell><div className="shell empty"><Package size={36} /><h3>Couldn't load this product</h3><p>There was a problem connecting to our catalog.</p><button className="btn btn--primary" onClick={() => refetch()}><RefreshCw size={16} /> Retry</button></div></PageShell>;
+
   if (!product) return <PageShell><div className="shell empty"><h2>Product not found</h2><Link to="/products" className="btn btn--primary">Back to products</Link></div></PageShell>;
 
   const isLocked = isRx && !hasApproved;
-  const related = products.filter((item) => item.category === product.category && item.id !== product.id).slice(0, 4);
 
   const add = () => {
     if (isRx && !hasApproved) {
@@ -114,7 +132,7 @@ export function ProductDetail() {
   );
 }
 
-function ProductCardSmall({ product }: { product: typeof products[number] }) {
+function ProductCardSmall({ product }: { product: Product }) {
   const { addItem } = useCart();
   const { user, demoUser } = useAuth();
   const showToast = useToast();

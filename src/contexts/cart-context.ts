@@ -1,5 +1,5 @@
 import { createContext, useContext } from 'react';
-import type { Product } from '@/data/products';
+import type { Product } from '@/lib/types';
 
 export type CartLine = Product & { quantity: number };
 export type CartAction = { type: 'add'; product: Product } | { type: 'remove'; id: number } | { type: 'update'; id: number; quantity: number };
