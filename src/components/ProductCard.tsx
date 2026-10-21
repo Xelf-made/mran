@@ -57,14 +57,24 @@ export function ProductCard({ product }: { product: Product }) {
 
   return (
     <article className={`pcard ${isLocked ? 'pcard--locked' : ''}`}>
-      <Link to={`/products/${product.id}`} className="pcard__media">
+      <div className="pcard__media">
         <img src={product.image} alt={product.name} loading="lazy" />
         {product.tag && <span className="pcard__tag">{product.tag}</span>}
         {product.isNew && <span className="pcard__new">New</span>}
         {product.prescription && <span className="pcard__rx">Rx</span>}
-        {isLocked && <span className="pcard__lock-badge"><Lock size={12} /> Prescription required</span>}
-        <span className="pcard__view">View <ArrowRight size={13} /></span>
-      </Link>
+        {isLocked ? (
+          <span className="pcard__lock-badge">
+            <Lock size={22} />
+            Prescription Required
+            <input ref={fileRef} type="file" accept="image/*,application/pdf" onChange={onFileChange} hidden />
+            <button type="button" className="pcard__lock-upload" onClick={(e) => { e.preventDefault(); fileRef.current?.click(); }}>
+              {uploading ? 'Uploading…' : <><Upload size={14} /> Upload Prescription</>}
+            </button>
+          </span>
+        ) : (
+          <Link to={`/products/${product.id}`} className="pcard__view">View <ArrowRight size={13} /></Link>
+        )}
+      </div>
       <div className="pcard__body">
         <p className="pcard__brand">{product.brand}</p>
         <Link to={`/products/${product.id}`} className="pcard__name">{product.name}</Link>
@@ -74,12 +84,9 @@ export function ProductCard({ product }: { product: Product }) {
           {product.oldPrice && <del>{price(product.oldPrice)}</del>}
         </div>
         {isLocked ? (
-          <>
-            <input ref={fileRef} type="file" accept="image/*,application/pdf" onChange={onFileChange} hidden />
-            <Button variant="outline" className="pcard__upload" onClick={() => fileRef.current?.click()}>
-              {uploading ? 'Uploading…' : <><Upload size={15} /> Upload prescription</>}
-            </Button>
-          </>
+          <Button variant="outline" className="pcard__upload" onClick={() => fileRef.current?.click()}>
+            {uploading ? 'Uploading…' : <><Upload size={15} /> Upload prescription</>}
+          </Button>
         ) : isRx && checkingApproval ? (
           <Button variant="outline" className="pcard__add" onClick={() => {}}>Checking…</Button>
         ) : (

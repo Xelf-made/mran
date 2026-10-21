@@ -90,7 +90,16 @@ export function ProductDetail() {
         <div className="detail__grid">
           <div className={`detail__media ${isLocked ? 'detail__media--locked' : ''}`}>
             <img src={product.image} alt={product.name} />
-            {isLocked && <div className="detail__lock-overlay"><Lock size={32} /><span>Prescription required</span></div>}
+            {isLocked && (
+              <div className="detail__lock-overlay">
+                <Lock size={36} />
+                <span>Prescription Required</span>
+                <input ref={fileRef} type="file" accept="image/*,application/pdf" onChange={onFileChange} hidden />
+                <button type="button" className="detail__lock-upload" onClick={() => fileRef.current?.click()}>
+                  {uploading ? 'Uploading…' : <><Upload size={16} /> Upload Prescription</>}
+                </button>
+              </div>
+            )}
           </div>
           <div className="detail__info">
             <span className="eyebrow">{product.brand} · {product.category}</span>
@@ -140,6 +149,9 @@ function ProductCardSmall({ product }: { product: Product }) {
   const isRx = Boolean(product.prescription);
   const { data: hasApproved } = useHasApprovedPrescription(userId);
   const isLocked = isRx && !hasApproved;
+  const fileRef = useRef<HTMLInputElement>(null);
+  const uploadMutation = useUploadPrescription();
+  const [uploading, setUploading] = useState(false);
 
   const handleClick = () => {
     if (isLocked) {
@@ -149,5 +161,57 @@ function ProductCardSmall({ product }: { product: Product }) {
     addItem(product);
   };
 
-  return <article className="pcard"><Link to={`/products/${product.id}`} className="pcard__media"><img src={product.image} alt={product.name} loading="lazy" />{product.tag && <span className="pcard__tag">{product.tag}</span>}<span className="pcard__view">View <ArrowRight size={13} /></span></Link><div className="pcard__body"><p className="pcard__brand">{product.brand}</p><Link to={`/products/${product.id}`} className="pcard__name">{product.name}</Link><div className="pcard__price"><strong>{price(product.price)}</strong>{product.oldPrice && <del>{price(product.oldPrice)}</del>}</div><Button onClick={handleClick} className="pcard__add">{isLocked ? <><Lock size={14} /> Rx required</> : 'Add to cart'}</Button></div></article>;
+  const handleUpload = async (file: File) => {
+    if (!userId) {
+      showToast('error', 'Please sign in to upload a prescription.');
+      return;
+    }
+    setUploading(true);
+    try {
+      await uploadMutation.mutateAsync({ file, userId, fileName: file.name });
+      showToast('success', 'Prescription uploaded! A pharmacist will review it shortly.');
+    } catch {
+      showToast('error', 'Could not upload. Please try again.');
+    }
+    setUploading(false);
+  };
+
+  const onFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) handleUpload(file);
+    e.target.value = '';
+  };
+
+  return (
+    <article className={`pcard ${isLocked ? 'pcard--locked' : ''}`}>
+      <div className="pcard__media">
+        <img src={product.image} alt={product.name} loading="lazy" />
+        {product.tag && <span className="pcard__tag">{product.tag}</span>}
+        {isLocked ? (
+          <span className="pcard__lock-badge">
+            <Lock size={20} />
+            Prescription Required
+            <input ref={fileRef} type="file" accept="image/*,application/pdf" onChange={onFileChange} hidden />
+            <button type="button" className="pcard__lock-upload" onClick={(e) => { e.preventDefault(); fileRef.current?.click(); }}>
+              {uploading ? 'Uploading…' : <><Upload size={13} /> Upload</>}
+            </button>
+          </span>
+        ) : (
+          <Link to={`/products/${product.id}`} className="pcard__view">View <ArrowRight size={13} /></Link>
+        )}
+      </div>
+      <div className="pcard__body">
+        <p className="pcard__brand">{product.brand}</p>
+        <Link to={`/products/${product.id}`} className="pcard__name">{product.name}</Link>
+        <div className="pcard__price"><strong>{price(product.price)}</strong>{product.oldPrice && <del>{price(product.oldPrice)}</del>}</div>
+        {isLocked ? (
+          <Button variant="outline" className="pcard__add" onClick={() => fileRef.current?.click()}>
+            {uploading ? 'Uploading…' : <><Upload size={14} /> Upload Rx</>}
+          </Button>
+        ) : (
+          <Button onClick={handleClick} className="pcard__add">Add to cart</Button>
+        )}
+      </div>
+    </article>
+  );
 }
