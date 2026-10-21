@@ -1,11 +1,9 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, BadgePercent, Copy, Gift, Tag, TrendingDown, Truck } from 'lucide-react';
+import { ArrowRight, BadgePercent, SlidersHorizontal, TrendingDown, Truck } from 'lucide-react';
 import { PageShell } from '@/components/PageShell';
-import { useProductsCatalog } from '@/lib/queries';
-import { useStoreSettings } from '@/lib/queries';
+import { useProductsCatalog, useStoreSettings } from '@/lib/queries';
 import { products as staticProducts } from '@/data/products';
-import { useToast } from '@/components/Toast';
 
 interface DiscountedProduct {
   id: number;
@@ -18,25 +16,6 @@ interface DiscountedProduct {
   tag: string | null;
 }
 
-interface Coupon {
-  code: string;
-  description: string;
-  type: 'percent' | 'flat' | 'bogo';
-  badge: string;
-}
-
-const coupons: Coupon[] = [
-  { code: 'MORAN500', description: 'KSh 500 off orders above KSh 5,000', type: 'flat', badge: 'KSh 500 off' },
-  { code: 'WELLNESS20', description: '20% off all vitamins & supplements', type: 'percent', badge: '20% off' },
-  { code: 'BOGOCARE', description: 'Buy one get one free on personal care', type: 'bogo', badge: 'BOGO' },
-];
-
-const banners = [
-  { id: 1, title: 'Wellness Week', subtitle: '20% off all vitamins & supplements', badge: '-20%', cls: 'offers__banner--emerald' },
-  { id: 2, title: 'Family Care Bundle', subtitle: 'Save KSh 600 on essential combos', badge: 'Save KSh 600', cls: 'offers__banner--amber' },
-  { id: 3, title: 'Personal Care BOGO', subtitle: 'Buy one, get one free — mix & match', badge: 'BOGO', cls: 'offers__banner--blue' },
-];
-
 type SortKey = 'biggest-savings' | 'discount-pct' | 'price-low' | 'price-high';
 
 const sortLabels: { key: SortKey; label: string }[] = [
@@ -46,27 +25,29 @@ const sortLabels: { key: SortKey; label: string }[] = [
   { key: 'price-high', label: 'Price: high to low' },
 ];
 
+const bannerPalettes = [
+  { bg: 'linear-gradient(135deg, #4f8f21 0%, #2b5c10 100%)', accent: '#a0e060' },
+  { bg: 'linear-gradient(135deg, #c08020 0%, #8a5c10 100%)', accent: '#f0c060' },
+  { bg: 'linear-gradient(135deg, #2050a0 0%, #103a70 100%)', accent: '#60a0e0' },
+];
+
 export function OffersPage() {
-  const showToast = useToast();
-  const [copied, setCopied] = useState<string | null>(null);
   const [sort, setSort] = useState<SortKey>('biggest-savings');
   const [bannerIdx, setBannerIdx] = useState(0);
 
   const { data: catalogData } = useProductsCatalog();
   const { data: settings } = useStoreSettings();
 
-  const copyCoupon = (code: string) => {
-    navigator.clipboard?.writeText(code);
-    setCopied(code);
-    showToast('success', `Coupon code ${code} copied to clipboard.`);
-    setTimeout(() => setCopied(null), 2000);
-  };
-
   // Aggregate products with active discounts (old_price > price)
   const discountedProducts = useMemo<DiscountedProduct[]>(() => {
     const source = catalogData && catalogData.length > 0
       ? catalogData
-      : staticProducts.map((p) => ({ id: p.id, name: p.name, brand: p.brand, category: p.category, price: p.price, old_price: p.oldPrice, image: p.image, tag: p.tag, is_new: p.isNew, prescription: p.prescription, rating: p.rating, reviews: p.reviews, stock: 100, sales: 0, description: p.description }));
+      : staticProducts.map((p) => ({
+          id: p.id, name: p.name, brand: p.brand, category: p.category,
+          price: p.price, old_price: p.oldPrice, image: p.image, tag: p.tag,
+          is_new: p.isNew, prescription: p.prescription, rating: p.rating,
+          reviews: p.reviews, stock: 100, sales: 0, description: p.description,
+        }));
 
     const withDiscount = (source as DiscountedProduct[]).filter(
       (p) => p.old_price !== null && p.old_price > p.price
@@ -83,38 +64,83 @@ export function OffersPage() {
   const freeDeliveryThreshold = settings?.free_delivery_threshold ?? 3000;
   const totalSavings = discountedProducts.reduce((sum, p) => sum + (p.old_price! - p.price), 0);
 
+  // Build dynamic banners from the top 3 discounted products
+  const banners = useMemo(() => {
+    const top = [...discountedProducts]
+      .sort((a, b) => (b.old_price! - b.price) - (a.old_price! - a.price))
+      .slice(0, 3);
+    return top.map((p, i) => {
+      const savings = p.old_price! - p.price;
+      const pct = Math.round((savings / p.old_price!) * 100);
+      return {
+        id: p.id,
+        name: p.name,
+        brand: p.brand,
+        pct,
+        savings,
+        image: p.image,
+        palette: bannerPalettes[i % bannerPalettes.length],
+      };
+    });
+  }, [discountedProducts]);
+
+  // Auto-rotate banners every 5 seconds
+  useEffect(() => {
+    if (banners.length <= 1) return;
+    const timer = setInterval(() => {
+      setBannerIdx((prev) => (prev + 1) % banners.length);
+    }, 5000);
+    return () => clearInterval(timer);
+  }, [banners.length]);
+
+  const activeBanner = banners[bannerIdx];
+
   return (
     <PageShell>
       <section className="page-hero page-hero--offers">
         <div className="shell">
-          <span className="eyebrow">Deals & promotions</span>
+          <span className="eyebrow">Deals &amp; promotions</span>
           <h1>Save more on your pharmacy essentials</h1>
-          <p>Active discounts, bundle deals, coupon codes, and free delivery — all in one place.</p>
+          <p>Real-time discounts pulled live from our product catalog. No codes needed — sale prices apply automatically at checkout.</p>
         </div>
       </section>
 
       <section className="shell offers">
-        {/* Banner carousel */}
-        <div className="offers__carousel">
-          <div className={`offers__banner ${banners[bannerIdx].cls}`}>
-            <div className="offers__banner-badge">{banners[bannerIdx].badge}</div>
-            <div className="offers__banner-text">
-              <h3>{banners[bannerIdx].title}</h3>
-              <p>{banners[bannerIdx].subtitle}</p>
+        {/* Dynamic banner carousel */}
+        {banners.length > 0 && (
+          <div className="offers__carousel">
+            <div className="offers__banner" style={{ background: activeBanner.palette.bg }}>
+              <div className="offers__banner-image">
+                <img src={activeBanner.image} alt={activeBanner.name} />
+              </div>
+              <div className="offers__banner-content">
+                <span className="offers__banner-tag">Featured deal</span>
+                <h3>{activeBanner.name}</h3>
+                <p>{activeBanner.brand} · Save KSh {activeBanner.savings.toLocaleString()} now</p>
+                <div className="offers__banner-meta">
+                  <span className="offers__banner-pct" style={{ background: activeBanner.palette.accent + '33', color: activeBanner.palette.accent }}>
+                    -{activeBanner.pct}%
+                  </span>
+                  <Link to={`/products/${activeBanner.id}`} className="offers__banner-cta">
+                    Shop this deal <ArrowRight size={15} />
+                  </Link>
+                </div>
+              </div>
             </div>
-            <Link to="/products" className="offers__banner-cta">Shop now <ArrowRight size={15} /></Link>
+            {banners.length > 1 && (
+              <div className="offers__carousel-dots">
+                {banners.map((b, i) => (
+                  <button
+                    key={b.id}
+                    className={`offers__dot ${i === bannerIdx ? 'offers__dot--active' : ''}`}
+                    onClick={() => setBannerIdx(i)}
+                    aria-label={`View deal ${i + 1}`}
+                  />
+                ))}
+              </div>
+            )}
           </div>
-          <div className="offers__carousel-dots">
-            {banners.map((b, i) => (
-              <button
-                key={b.id}
-                className={`offers__dot ${i === bannerIdx ? 'offers__dot--active' : ''}`}
-                onClick={() => setBannerIdx(i)}
-                aria-label={`Banner ${i + 1}`}
-              />
-            ))}
-          </div>
-        </div>
+        )}
 
         {/* Discounted products grid */}
         <div className="offers__section-head">
@@ -123,8 +149,8 @@ export function OffersPage() {
             <p>{discountedProducts.length} products with active discounts · Total savings worth KSh {totalSavings.toLocaleString()}</p>
           </div>
           <div className="offers__sort">
-            <TrendingDown size={16} />
-            <select value={sort} onChange={(e) => setSort(e.target.value as SortKey)}>
+            <SlidersHorizontal size={16} />
+            <select value={sort} onChange={(e) => setSort(e.target.value as SortKey)} aria-label="Sort products">
               {sortLabels.map((s) => <option key={s.key} value={s.key}>{s.label}</option>)}
             </select>
           </div>
@@ -134,7 +160,7 @@ export function OffersPage() {
           <div className="rx-history__empty">
             <BadgePercent size={36} />
             <h3>No active discounts right now</h3>
-            <p>Check back soon — new deals are added regularly.</p>
+            <p>Check back soon — new deals are added regularly as products go on sale.</p>
           </div>
         ) : (
           <div className="offers__product-grid">
@@ -162,41 +188,12 @@ export function OffersPage() {
           </div>
         )}
 
-        {/* Coupon codes section */}
-        <div className="offers__coupons">
-          <div className="offers__section-head">
-            <div>
-              <h2>Active coupon codes</h2>
-              <p>Apply these codes at checkout for extra savings</p>
-            </div>
-          </div>
-          <div className="offers__coupon-grid">
-            {coupons.map((c) => {
-              const icon = c.type === 'percent' ? BadgePercent : c.type === 'bogo' ? Tag : Gift;
-              const Icon = icon;
-              return (
-                <div className="coupon-card" key={c.code}>
-                  <div className="coupon-card__head">
-                    <span className="coupon-card__badge">{c.badge}</span>
-                    <Icon size={20} className="coupon-card__icon" />
-                  </div>
-                  <p className="coupon-card__desc">{c.description}</p>
-                  <button className="coupon-card__code" onClick={() => copyCoupon(c.code)}>
-                    <span>{copied === c.code ? 'Copied!' : c.code}</span>
-                    <Copy size={15} />
-                  </button>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
         {/* Free delivery banner */}
         <div className="offers__delivery-banner">
           <div className="offers__delivery-icon"><Truck size={28} /></div>
           <div className="offers__delivery-text">
             <strong>Free delivery in Nairobi on orders above KSh {freeDeliveryThreshold.toLocaleString()}</strong>
-            <span>Same-day delivery available. M-Pesa Express checkout supported.</span>
+            <span>Same-day delivery available. M-Pesa Express checkout supported. Discount applies automatically — no coupon needed.</span>
           </div>
           <Link to="/products" className="btn btn--primary offers__delivery-cta">Start shopping <ArrowRight size={15} /></Link>
         </div>
