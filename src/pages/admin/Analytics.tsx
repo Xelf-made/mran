@@ -1,4 +1,4 @@
-import { Activity, BarChart3, ShoppingBag, TrendingUp, Users } from 'lucide-react';
+import { Activity, BarChart3, Boxes, ShoppingBag, TrendingDown, TrendingUp, Users } from 'lucide-react';
 import type { AdminOrder, AdminProduct } from './types';
 import { STATUSES, STATUS_LABELS, price } from './types';
 import { useAnalyticsData } from '@/lib/queries';
@@ -35,6 +35,7 @@ export function Analytics() {
   const revenueLastMonth = validOrders.filter((o) => { const t = orderTime(o); return t >= lastMonthStart.getTime() && t <= lastMonthEnd.getTime(); }).reduce((s, o) => s + o.total, 0);
 
   const growth = revenueLastMonth > 0 ? (((revenueMonth - revenueLastMonth) / revenueLastMonth) * 100).toFixed(1) : '0.0';
+  const isGrowthPositive = Number(growth) >= 0;
 
   const ordersToday = orders.filter((o) => orderTime(o) >= startOfDay.getTime()).length;
   const ordersWeek = orders.filter((o) => orderTime(o) >= startOfWeek.getTime()).length;
@@ -63,11 +64,21 @@ export function Analytics() {
     <div>
       {error && <div className="auth__error" style={{ marginBottom: 20 }}>{(error as Error).message}</div>}
 
-      <div className="admin__stats">
-        <div className="admin-stat admin-stat--delivered"><span className="admin-stat__icon"><TrendingUp size={16} /></span><div><strong>{price(revenueMonth)}</strong><small>Revenue this month</small></div></div>
-        <div className="admin-stat"><span className="admin-stat__icon"><ShoppingBag size={16} /></span><div><strong>{ordersMonth}</strong><small>Orders this month</small></div></div>
-        <div className="admin-stat"><span className="admin-stat__icon"><Users size={16} /></span><div><strong>{customers}</strong><small>Total customers</small></div></div>
-        <div className="admin-stat admin-stat--pending"><span className="admin-stat__icon"><Activity size={16} /></span><div><strong>{pendingCount}</strong><small>Pending orders</small></div></div>
+      {/* Hero KPI banner */}
+      <div className="analytics__hero">
+        <div className="analytics__hero-main">
+          <span className="analytics__hero-label"><TrendingUp size={15} /> Revenue this month</span>
+          <strong className="analytics__hero-value">{price(revenueMonth)}</strong>
+          <span className={`analytics__hero-growth ${isGrowthPositive ? 'analytics__positive' : 'analytics__negative'}`}>
+            {isGrowthPositive ? <TrendingUp size={14} /> : <TrendingDown size={14} />} {isGrowthPositive ? '+' : ''}{growth}% vs last month
+          </span>
+        </div>
+        <div className="analytics__hero-side">
+          <div className="analytics__hero-stat"><ShoppingBag size={18} /><div><strong>{ordersMonth}</strong><small>Orders this month</small></div></div>
+          <div className="analytics__hero-stat"><Users size={18} /><div><strong>{customers}</strong><small>Total customers</small></div></div>
+          <div className="analytics__hero-stat"><Activity size={18} /><div><strong>{pendingCount}</strong><small>Pending orders</small></div></div>
+          <div className="analytics__hero-stat"><Boxes size={18} /><div><strong>{products.length}</strong><small>Products tracked</small></div></div>
+        </div>
       </div>
 
       <div className="analytics__grid">
@@ -77,7 +88,7 @@ export function Analytics() {
           <div className="analytics__rev-row"><span>This week</span><strong>{price(revenueWeek)}</strong></div>
           <div className="analytics__rev-row"><span>This month</span><strong>{price(revenueMonth)}</strong></div>
           <div className="analytics__rev-row analytics__rev-row--growth"><span>Growth vs last month</span>
-            <strong className={Number(growth) >= 0 ? 'analytics__positive' : 'analytics__negative'}><TrendingUp size={14} /> {growth}%</strong>
+            <strong className={isGrowthPositive ? 'analytics__positive' : 'analytics__negative'}>{isGrowthPositive ? <TrendingUp size={14} /> : <TrendingDown size={14} />} {isGrowthPositive ? '+' : ''}{growth}%</strong>
           </div>
         </div>
 
