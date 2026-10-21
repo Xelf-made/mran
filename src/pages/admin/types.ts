@@ -17,7 +17,7 @@ export interface AdminOrder {
 }
 
 export interface AdminProduct {
-  id: number;
+  id: string;
   name: string;
   brand: string;
   category: string;
@@ -46,7 +46,7 @@ export interface AdminCustomer {
 }
 
 export interface StoreSettings {
-  id: number;
+  id: string;
   store_name: string;
   store_email: string;
   store_phone: string;

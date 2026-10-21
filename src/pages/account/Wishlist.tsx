@@ -8,7 +8,7 @@ import type { Product } from '@/lib/types';
 import { price } from './shared';
 
 interface NormalizedWish {
-  id: number;
+  id: string;
   wishId: string;
   name: string;
   brand: string;
@@ -30,11 +30,11 @@ export function Wishlist() {
 
   const items: NormalizedWish[] = isDemo
     ? demoWishlist.map((item) => ({
-        id: item.id, wishId: String(item.id), name: item.name, brand: item.brand,
+        id: String(item.id), wishId: String(item.id), name: item.name, brand: item.brand,
         price: item.price, oldPrice: null, image: item.image, rating: item.rating, inStock: item.inStock,
       }))
     : (liveWishlist ?? []).map((item: WishlistItem) => ({
-        id: item.product_id, wishId: item.id, name: item.product.name, brand: item.product.brand,
+        id: String(item.product_id), wishId: item.id, name: item.product.name, brand: item.product.brand,
         price: item.product.price, oldPrice: item.product.old_price, image: item.product.image,
         rating: item.product.rating, inStock: item.product.stock > 0,
       }));

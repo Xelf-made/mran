@@ -3,7 +3,7 @@ import type { AdminProduct } from '@/pages/admin/types';
 export type ProductCategory = 'Medicines' | 'Vitamins & Supplements' | 'Personal Care' | 'Mother & Baby' | 'Medical Devices' | 'Wellness';
 
 export interface Product {
-  id: number;
+  id: string;
   name: string;
   brand: string;
   category: ProductCategory;

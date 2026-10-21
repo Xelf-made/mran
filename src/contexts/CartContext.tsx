@@ -16,6 +16,6 @@ export function CartProvider({ children }: { children: ReactNode }) {
     try { return JSON.parse(localStorage.getItem('moran-cart') ?? '[]') as CartLine[]; } catch { return []; }
   });
   useEffect(() => localStorage.setItem('moran-cart', JSON.stringify(items)), [items]);
-  const value = useMemo(() => ({ items, count: items.reduce((sum, item) => sum + item.quantity, 0), subtotal: items.reduce((sum, item) => sum + item.price * item.quantity, 0), addItem: (product: Product) => dispatch({ type: 'add', product }), removeItem: (id: number) => dispatch({ type: 'remove', id }), updateQuantity: (id: number, quantity: number) => dispatch({ type: 'update', id, quantity }), clearCart: () => items.forEach((item) => dispatch({ type: 'remove', id: item.id })) }), [items]);
+  const value = useMemo(() => ({ items, count: items.reduce((sum, item) => sum + item.quantity, 0), subtotal: items.reduce((sum, item) => sum + item.price * item.quantity, 0), addItem: (product: Product) => dispatch({ type: 'add', product }), removeItem: (id: string) => dispatch({ type: 'remove', id }), updateQuantity: (id: string, quantity: number) => dispatch({ type: 'update', id, quantity }), clearCart: () => items.forEach((item) => dispatch({ type: 'remove', id: item.id })) }), [items]);
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
 }

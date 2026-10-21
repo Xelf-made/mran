@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, ArrowRight, BadgeCheck, Check, Lock, Minus, Package, Plus, RefreshCw, ShieldCheck, ShoppingBag, Truck, Upload } from 'lucide-react';
 import { Button, Stars } from '@/components/ProductCard';
 import { PageShell } from '@/components/PageShell';
-import { useProductsCatalog } from '@/lib/queries';
+import { useProductDetail, useProductsCatalog } from '@/lib/queries';
 import { mapToProduct, type Product } from '@/lib/types';
 import { useCart } from '@/contexts/cart-context';
 import { useAuth } from '@/contexts/useAuth';
@@ -14,8 +14,9 @@ import { useToast } from '@/components/Toast';
 const price = (value: number) => `KSh ${value.toLocaleString()}`;
 
 export function ProductDetail() {
-  const { id } = useParams();
-  const { data: liveProducts, isLoading, isError, refetch } = useProductsCatalog();
+  const { id } = useParams<{ id: string }>();
+  const { data: productRow, isLoading, isError, refetch } = useProductDetail(id);
+  const { data: catalog } = useProductsCatalog();
   const { addItem } = useCart();
   const { user, demoUser } = useAuth();
   const showToast = useToast();
@@ -24,18 +25,17 @@ export function ProductDetail() {
   const fileRef = useRef<HTMLInputElement>(null);
 
   const product: Product | undefined = useMemo(() => {
-    if (!liveProducts) return undefined;
-    const row = liveProducts.find((p) => p.id === Number(id));
-    return row ? mapToProduct(row) : undefined;
-  }, [liveProducts, id]);
+    if (!productRow) return undefined;
+    return mapToProduct(productRow);
+  }, [productRow]);
 
   const related: Product[] = useMemo(() => {
-    if (!liveProducts || !product) return [];
-    return liveProducts
+    if (!catalog || !product) return [];
+    return catalog
       .filter((p) => p.category === product.category && p.id !== product.id)
       .slice(0, 4)
       .map(mapToProduct);
-  }, [liveProducts, product]);
+  }, [catalog, product]);
 
   const userId = user?.id ?? demoUser?.id ?? '';
   const isRx = Boolean(product?.prescription);

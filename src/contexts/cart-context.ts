@@ -2,15 +2,15 @@ import { createContext, useContext } from 'react';
 import type { Product } from '@/lib/types';
 
 export type CartLine = Product & { quantity: number };
-export type CartAction = { type: 'add'; product: Product } | { type: 'remove'; id: number } | { type: 'update'; id: number; quantity: number };
+export type CartAction = { type: 'add'; product: Product } | { type: 'remove'; id: string } | { type: 'update'; id: string; quantity: number };
 
 export interface CartContextValue {
   items: CartLine[];
   count: number;
   subtotal: number;
   addItem: (product: Product) => void;
-  removeItem: (id: number) => void;
-  updateQuantity: (id: number, quantity: number) => void;
+  removeItem: (id: string) => void;
+  updateQuantity: (id: string, quantity: number) => void;
   clearCart: () => void;
 }
 

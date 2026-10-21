@@ -5,7 +5,7 @@ import { PageShell } from '@/components/PageShell';
 import { useProductsCatalog, useStoreSettings } from '@/lib/queries';
 
 interface DiscountedProduct {
-  id: number;
+  id: string;
   name: string;
   brand: string;
   category: string;
