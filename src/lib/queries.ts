@@ -2,14 +2,16 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from './supabase';
 import type { AdminOrder, AdminProduct, AdminCustomer, StoreSettings as StoreSettingsType } from '@/pages/admin/types';
 
-/*
- * Centralized query keys for consistent cache management.
- * All keys are arrays so TanStack Query can do partial invalidation.
- */
+export type Id = string | number;
+
+const isUuid = (s: string) =>
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s);
+const validUser = (s: string) => !!s && isUuid(s);
+
 export const queryKeys = {
   products: ['products'] as const,
   productsList: (page: number, limit: number) => ['products', 'list', page, limit] as const,
-  productDetail: (id: number) => ['products', 'detail', id] as const,
+  productDetail: (id: Id) => ['products', 'detail', id] as const,
   orders: ['orders'] as const,
   ordersList: (page: number, limit: number) => ['orders', 'list', page, limit] as const,
   customerOrders: (userId: string) => ['orders', 'customer', userId] as const,
@@ -27,28 +29,21 @@ export const queryKeys = {
   rxProducts: ['products', 'rx'] as const,
 };
 
-/*
- * Column lists — replaces SELECT * with only the fields each view needs,
- * reducing payload size and database work.
- */
-const PRODUCT_CARD_COLUMNS = 'id, name, brand, category, price, old_price, rating, reviews, image, tag, is_new, prescription';
-const PRODUCT_ADMIN_COLUMNS = 'id, name, brand, category, price, old_price, rating, reviews, image, tag, is_new, prescription, stock, sales, description';
+const PRODUCT_CARD_COLUMNS = 'id, name, brand, category, price, old_price, rating, reviews, image, tag, is_new, prescription, stock';
+const PRODUCT_ADMIN_COLUMNS = `${PRODUCT_CARD_COLUMNS}, sales, description`;
+const PRODUCT_DETAIL_COLUMNS = `${PRODUCT_ADMIN_COLUMNS}`;
+const PRODUCT_STOCK_COLUMNS = 'id, name, stock, sales';
 const ORDER_ADMIN_COLUMNS = 'id, order_number, status, total, delivery_fee, payment_method, items, delivery_name, delivery_phone, delivery_address, delivery_area, created_at';
 const ORDER_ANALYTICS_COLUMNS = 'id, order_number, status, total, items, delivery_name, created_at';
-const PRODUCT_STOCK_COLUMNS = 'id, name, stock, sales';
-const PROFILE_COLUMNS = 'id, full_name, phone, area, created_at';
 const ORDER_CUSTOMER_COLUMNS = 'user_id, total, status, delivery_area';
+const ORDER_CUSTOMER_FULL_COLUMNS = ORDER_ADMIN_COLUMNS;
+const PROFILE_COLUMNS = 'id, full_name, phone, area, created_at';
 const ADDRESS_COLUMNS = 'id, user_id, label, name, phone, line1, area, city, is_default, created_at';
 const PAYMENT_COLUMNS = 'id, user_id, type, label, detail, is_default, created_at';
-const WISHLET_COLUMNS = 'id, user_id, product_id, created_at';
-const ORDER_CUSTOMER_FULL_COLUMNS = 'id, order_number, status, total, delivery_fee, payment_method, items, delivery_name, delivery_phone, delivery_address, delivery_area, created_at';
+const WISHLIST_COLUMNS = 'id, user_id, product_id, created_at';
 const PRESCRIPTION_COLUMNS = 'id, user_id, file_url, file_name, status, pharmacist_notes, reviewed_by, created_at, updated_at';
 const RX_PRODUCT_COLUMNS = 'id, name, brand, category, price, image, stock, prescription, description';
 
-/*
- * Public product catalog query — cached for 10 minutes (staleTime set globally
- * but also here for explicitness). Only fetches columns needed for product cards.
- */
 export function useProductsCatalog() {
   return useQuery({
     queryKey: queryKeys.products,
@@ -58,15 +53,29 @@ export function useProductsCatalog() {
         .select(PRODUCT_CARD_COLUMNS)
         .order('id', { ascending: true });
       if (error) throw error;
-      return data as AdminProduct[];
+      return (data ?? []) as unknown as AdminProduct[];
     },
     staleTime: 10 * 60 * 1000,
   });
 }
 
-/*
- * Paginated admin product list with specific columns for the admin table.
- */
+export function useProductDetail(id: Id | undefined) {
+  return useQuery({
+    queryKey: queryKeys.productDetail(id ?? ''),
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('products')
+        .select(PRODUCT_DETAIL_COLUMNS)
+        .eq('id', id as Id)
+        .maybeSingle();
+      if (error) throw error;
+      return data as unknown as AdminProduct | null;
+    },
+    enabled: id !== undefined && id !== '',
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
 export function useAdminProducts(page: number, limit: number = 20) {
   return useQuery({
     queryKey: queryKeys.productsList(page, limit),
@@ -79,15 +88,12 @@ export function useAdminProducts(page: number, limit: number = 20) {
         .order('id', { ascending: true })
         .range(from, to);
       if (error) throw error;
-      return { items: data as AdminProduct[], total: count ?? 0 };
+      return { items: (data ?? []) as unknown as AdminProduct[], total: count ?? 0 };
     },
     staleTime: 2 * 60 * 1000,
   });
 }
 
-/*
- * All products with stock columns — for analytics stock alerts.
- */
 export function useProductStock() {
   return useQuery({
     queryKey: ['products', 'stock'],
@@ -97,15 +103,12 @@ export function useProductStock() {
         .select(PRODUCT_STOCK_COLUMNS)
         .order('id', { ascending: true });
       if (error) throw error;
-      return data as Pick<AdminProduct, 'id' | 'name' | 'stock' | 'sales'>[];
+      return (data ?? []) as unknown as Pick<AdminProduct, 'id' | 'name' | 'stock' | 'sales'>[];
     },
     staleTime: 2 * 60 * 1000,
   });
 }
 
-/*
- * Paginated admin orders list with specific columns.
- */
 export function useAdminOrders(page: number, limit: number = 50) {
   return useQuery({
     queryKey: queryKeys.ordersList(page, limit),
@@ -118,16 +121,12 @@ export function useAdminOrders(page: number, limit: number = 50) {
         .order('created_at', { ascending: false })
         .range(from, to);
       if (error) throw error;
-      return { items: data as AdminOrder[], total: count ?? 0 };
+      return { items: (data ?? []) as unknown as AdminOrder[], total: count ?? 0 };
     },
     staleTime: 30 * 1000,
   });
 }
 
-/*
- * Analytics: fetches order + product data with minimal columns for revenue
- * and stock calculations. Uses separate queries for parallelism.
- */
 export function useAnalyticsData() {
   return useQuery({
     queryKey: ['analytics'],
@@ -141,8 +140,8 @@ export function useAnalyticsData() {
       if (prodErr) throw prodErr;
       if (profErr) throw profErr;
       return {
-        orders: (orders ?? []) as AdminOrder[],
-        products: (products ?? []) as Pick<AdminProduct, 'id' | 'name' | 'stock' | 'sales'>[],
+        orders: (orders ?? []) as unknown as AdminOrder[],
+        products: (products ?? []) as unknown as Pick<AdminProduct, 'id' | 'name' | 'stock' | 'sales'>[],
         customerCount: profiles?.length ?? 0,
       };
     },
@@ -150,10 +149,6 @@ export function useAnalyticsData() {
   });
 }
 
-/*
- * Customers: fetches profiles + order aggregates in parallel, then joins
- * client-side. Cached for 1 minute.
- */
 export function useCustomers() {
   return useQuery({
     queryKey: queryKeys.customers,
@@ -167,11 +162,11 @@ export function useCustomers() {
 
       const orderMap = new Map<string, { count: number; spent: number; areas: Map<string, number> }>();
       (orders ?? []).forEach((o: { user_id: string; total: number; status: string; delivery_area: string }) => {
-        if (o.status === 'cancelled') return;
+        if (!o.user_id || o.status === 'cancelled') return;
         const entry = orderMap.get(o.user_id) ?? { count: 0, spent: 0, areas: new Map() };
         entry.count += 1;
-        entry.spent += o.total;
-        entry.areas.set(o.delivery_area, (entry.areas.get(o.delivery_area) ?? 0) + 1);
+        entry.spent += Number(o.total) || 0;
+        if (o.delivery_area) entry.areas.set(o.delivery_area, (entry.areas.get(o.delivery_area) ?? 0) + 1);
         orderMap.set(o.user_id, entry);
       });
 
@@ -197,9 +192,7 @@ export function useCustomers() {
   });
 }
 
-/*
- * Store settings — singleton row, cached for 10 minutes (rarely changes).
- */
+/* store_settings.id is a uuid: read the single row, update by its own id */
 export function useStoreSettings() {
   return useQuery({
     queryKey: queryKeys.storeSettings,
@@ -207,18 +200,14 @@ export function useStoreSettings() {
       const { data, error } = await supabase
         .from('store_settings')
         .select('*')
-        .eq('id', 1)
+        .limit(1)
         .maybeSingle();
       if (error) throw error;
-      return data as StoreSettingsType | null;
+      return data as (StoreSettingsType & { id: string }) | null;
     },
     staleTime: 10 * 60 * 1000,
   });
 }
-
-/*
- * Mutations with automatic cache invalidation.
- */
 
 export function useUpdateOrderStatus() {
   const qc = useQueryClient();
@@ -249,7 +238,7 @@ export function useSaveProduct() {
       }
       const { data, error } = await supabase.from('products').insert(cleanPayload).select('*').single();
       if (error) throw error;
-      return data as AdminProduct;
+      return data as unknown as AdminProduct;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: queryKeys.products });
@@ -260,7 +249,7 @@ export function useSaveProduct() {
 export function useDeleteProduct() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (id: number) => {
+    mutationFn: async (id: Id) => {
       const { error } = await supabase.from('products').delete().eq('id', id);
       if (error) throw error;
     },
@@ -273,7 +262,7 @@ export function useDeleteProduct() {
 export function useToggleStock() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, stock }: { id: number; stock: number }) => {
+    mutationFn: async ({ id, stock }: { id: Id; stock: number }) => {
       const { error } = await supabase.from('products').update({ stock }).eq('id', id);
       if (error) throw error;
     },
@@ -286,11 +275,12 @@ export function useToggleStock() {
 export function useSaveSettings() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (settings: StoreSettingsType) => {
+    mutationFn: async (settings: StoreSettingsType & { id: string }) => {
+      const { id, ...rest } = settings;
       const { error } = await supabase
         .from('store_settings')
-        .update({ ...settings, updated_at: new Date().toISOString() })
-        .eq('id', 1);
+        .update({ ...rest, updated_at: new Date().toISOString() })
+        .eq('id', id);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -298,10 +288,6 @@ export function useSaveSettings() {
     },
   });
 }
-
-/*
- * Customer-facing hooks
- */
 
 export interface CustomerAddress {
   id: string;
@@ -337,10 +323,10 @@ export interface CustomerProfile {
 export interface WishlistItem {
   id: string;
   user_id: string;
-  product_id: number;
+  product_id: Id;
   created_at: string;
   product: {
-    id: number;
+    id: Id;
     name: string;
     brand: string;
     price: number;
@@ -361,10 +347,10 @@ export function useCustomerOrders(userId: string) {
         .eq('user_id', userId)
         .order('created_at', { ascending: false });
       if (error) throw error;
-      return data as AdminOrder[];
+      return (data ?? []) as unknown as AdminOrder[];
     },
     staleTime: 30 * 1000,
-    enabled: !!userId,
+    enabled: validUser(userId),
   });
 }
 
@@ -378,10 +364,10 @@ export function useAddresses(userId: string) {
         .eq('user_id', userId)
         .order('created_at', { ascending: true });
       if (error) throw error;
-      return data as CustomerAddress[];
+      return (data ?? []) as CustomerAddress[];
     },
     staleTime: 60 * 1000,
-    enabled: !!userId,
+    enabled: validUser(userId),
   });
 }
 
@@ -416,7 +402,8 @@ export function useSetDefaultAddress(userId: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (id: string) => {
-      await supabase.from('addresses').update({ is_default: false }).eq('user_id', userId);
+      const { error: e1 } = await supabase.from('addresses').update({ is_default: false }).eq('user_id', userId);
+      if (e1) throw e1;
       const { error } = await supabase.from('addresses').update({ is_default: true }).eq('id', id);
       if (error) throw error;
     },
@@ -434,10 +421,10 @@ export function usePaymentMethods(userId: string) {
         .eq('user_id', userId)
         .order('created_at', { ascending: true });
       if (error) throw error;
-      return data as CustomerPaymentMethod[];
+      return (data ?? []) as CustomerPaymentMethod[];
     },
     staleTime: 60 * 1000,
-    enabled: !!userId,
+    enabled: validUser(userId),
   });
 }
 
@@ -472,7 +459,8 @@ export function useSetDefaultPayment(userId: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (id: string) => {
-      await supabase.from('payment_methods').update({ is_default: false }).eq('user_id', userId);
+      const { error: e1 } = await supabase.from('payment_methods').update({ is_default: false }).eq('user_id', userId);
+      if (e1) throw e1;
       const { error } = await supabase.from('payment_methods').update({ is_default: true }).eq('id', id);
       if (error) throw error;
     },
@@ -486,14 +474,14 @@ export function useWishlist(userId: string) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('wishlist')
-        .select(`${WISHLET_COLUMNS}, product:products(id, name, brand, price, old_price, image, rating, stock)`)
+        .select(`${WISHLIST_COLUMNS}, product:products(id, name, brand, price, old_price, image, rating, stock)`)
         .eq('user_id', userId)
         .order('created_at', { ascending: false });
       if (error) throw error;
       return (data ?? []) as unknown as WishlistItem[];
     },
     staleTime: 60 * 1000,
-    enabled: !!userId,
+    enabled: validUser(userId),
   });
 }
 
@@ -521,7 +509,7 @@ export function useProfile(userId: string) {
       return data as CustomerProfile | null;
     },
     staleTime: 60 * 1000,
-    enabled: !!userId,
+    enabled: validUser(userId),
   });
 }
 
@@ -539,10 +527,6 @@ export function useUpdateProfile(userId: string) {
   });
 }
 
-/*
- * Pharmacist portal hooks
- */
-
 export type PrescriptionStatus = 'pending' | 'approved' | 'rejected';
 
 export interface Prescription {
@@ -559,7 +543,7 @@ export interface Prescription {
 }
 
 export interface RxProduct {
-  id: number;
+  id: Id;
   name: string;
   brand: string;
   category: string;
@@ -617,7 +601,7 @@ export function useCustomerPrescriptions(userId: string) {
       return (data ?? []) as Prescription[];
     },
     staleTime: 30 * 1000,
-    enabled: !!userId,
+    enabled: validUser(userId),
   });
 }
 
@@ -641,10 +625,7 @@ export function useReviewPrescription() {
         .eq('id', id);
       if (error) throw error;
     },
-    onSuccess: (_data, variables) => {
-      qc.invalidateQueries({ queryKey: queryKeys.pendingPrescriptions });
-      qc.invalidateQueries({ queryKey: queryKeys.reviewedPrescriptions });
-      qc.invalidateQueries({ queryKey: queryKeys.customerPrescriptions(variables.reviewerId) });
+    onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['prescriptions'] });
     },
   });
@@ -667,12 +648,7 @@ export function useUploadPrescription() {
 
       const { data, error: insertError } = await supabase
         .from('prescriptions')
-        .insert({
-          user_id: userId,
-          file_url: path,
-          file_name: fileName,
-          status: 'pending',
-        })
+        .insert({ user_id: userId, file_url: path, file_name: fileName, status: 'pending' })
         .select('id')
         .single();
       if (insertError) throw insertError;
@@ -697,7 +673,7 @@ export function useHasApprovedPrescription(userId: string) {
       return (count ?? 0) > 0;
     },
     staleTime: 15 * 1000,
-    enabled: !!userId,
+    enabled: validUser(userId),
   });
 }
 
@@ -711,9 +687,8 @@ export function useRxProducts() {
         .eq('prescription', true)
         .order('name', { ascending: true });
       if (error) throw error;
-      return (data ?? []) as RxProduct[];
+      return (data ?? []) as unknown as RxProduct[];
     },
     staleTime: 5 * 60 * 1000,
   });
 }
-
