@@ -9,7 +9,7 @@ const CATEGORIES = ['Medicines', 'Vitamins & Supplements', 'Personal Care', 'Mot
 const PAGE_SIZE = 20;
 
 const emptyForm: Omit<AdminProduct, 'id'> = {
-  name: '', brand: '', category: 'Medicines', price: 0, old_price: null,
+  name: '', brand: '', category: 'Medicines', price: 0, old_price: null, compare_at_price: null,
   rating: 0, reviews: 0, image: '', image_urls: null, tag: null, is_new: false,
   prescription: false, stock: 0, sales: 0, description: '',
 };
@@ -35,7 +35,7 @@ export function Products() {
   const openAdd = () => { setEditing(null); setForm(emptyForm); setModalOpen(true); };
   const openEdit = (p: AdminProduct) => {
     setEditing(p);
-    setForm({ name: p.name, brand: p.brand, category: p.category, price: p.price, old_price: p.old_price, rating: p.rating, reviews: p.reviews, image: p.image, image_urls: p.image_urls, tag: p.tag, is_new: p.is_new, prescription: p.prescription, stock: p.stock, sales: p.sales, description: p.description });
+    setForm({ name: p.name, brand: p.brand, category: p.category, price: p.price, old_price: p.old_price, compare_at_price: p.compare_at_price ?? null, rating: p.rating, reviews: p.reviews, image: p.image, image_urls: p.image_urls, tag: p.tag, is_new: p.is_new, prescription: p.prescription, stock: p.stock, sales: p.sales, description: p.description });
     setModalOpen(true);
   };
 
@@ -330,7 +330,7 @@ function ProductModal({ editing, form, setForm, saving, error, onClose, onSave }
 
           <div className="form-section">
             <h4 className="form-section__title"><TrendingUp size={16} /> Discounts & offers</h4>
-            {field('Compare-at price (KSh)', 'old_price', 'number', 'Original price for sale display')}
+            {field('Compare-at price (KSh)', 'compare_at_price', 'number', 'Original price for sale display')}
             <p className="form-section__hint">Set a compare-at price to show a discounted price with a strikethrough on the storefront.</p>
           </div>
 

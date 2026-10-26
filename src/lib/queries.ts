@@ -30,10 +30,10 @@ export const queryKeys = {
   rxProducts: ['products', 'rx'] as const,
 };
 
-const PRODUCT_CARD_COLUMNS = 'id, name, brand, category, price, old_price, rating, reviews, image, image_urls, tag, is_new, prescription, stock';
+const PRODUCT_CARD_COLUMNS = 'id, name, brand, category, price, old_price, compare_at_price, rating, reviews, image, image_urls, tag, is_new, prescription, stock';
 const PRODUCT_ADMIN_COLUMNS = `${PRODUCT_CARD_COLUMNS}, sales, description`;
 const PRODUCT_DETAIL_COLUMNS = `${PRODUCT_ADMIN_COLUMNS}`;
-const PRODUCT_STOCK_COLUMNS = 'id, name, stock, sales';
+const PRODUCT_STOCK_COLUMNS = 'id, name, stock, sales, price, compare_at_price, old_price, image, category, brand';
 const ORDER_ADMIN_COLUMNS = 'id, order_number, status, total, delivery_fee, payment_method, items, delivery_name, delivery_phone, delivery_address, delivery_area, created_at';
 const ORDER_ANALYTICS_COLUMNS = 'id, order_number, status, total, items, delivery_name, created_at';
 const ORDER_CUSTOMER_COLUMNS = 'user_id, total, status, delivery_area';
@@ -104,7 +104,7 @@ export function useProductStock() {
         .select(PRODUCT_STOCK_COLUMNS)
         .order('id', { ascending: true });
       if (error) throw error;
-      return (data ?? []) as unknown as Pick<AdminProduct, 'id' | 'name' | 'stock' | 'sales'>[];
+      return (data ?? []) as unknown as Pick<AdminProduct, 'id' | 'name' | 'stock' | 'sales' | 'price' | 'compare_at_price' | 'old_price' | 'image' | 'category' | 'brand'>[];
     },
     staleTime: 2 * 60 * 1000,
   });
@@ -142,7 +142,7 @@ export function useAnalyticsData() {
       if (profErr) throw profErr;
       return {
         orders: (orders ?? []) as unknown as AdminOrder[],
-        products: (products ?? []) as unknown as Pick<AdminProduct, 'id' | 'name' | 'stock' | 'sales'>[],
+        products: (products ?? []) as unknown as Pick<AdminProduct, 'id' | 'name' | 'stock' | 'sales' | 'price' | 'compare_at_price' | 'old_price' | 'image' | 'category' | 'brand'>[],
         customerCount: profiles?.length ?? 0,
       };
     },
@@ -231,7 +231,7 @@ export function useSaveProduct() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ editing, payload }: { editing: AdminProduct | null; payload: Omit<AdminProduct, 'id'> }) => {
-      const cleanPayload = { ...payload, old_price: payload.old_price || null, tag: payload.tag || null, image_urls: payload.image_urls && payload.image_urls.length > 0 ? payload.image_urls : null };
+      const cleanPayload = { ...payload, old_price: payload.old_price || null, compare_at_price: payload.compare_at_price || null, tag: payload.tag || null, image_urls: payload.image_urls && payload.image_urls.length > 0 ? payload.image_urls : null };
       if (editing) {
         const { error } = await supabase.from('products').update(cleanPayload).eq('id', editing.id);
         if (error) throw error;
@@ -264,11 +264,42 @@ export function useToggleStock() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ id, stock }: { id: Id; stock: number }) => {
-      const { error } = await supabase.from('products').update({ stock }).eq('id', id);
+      const { error } = await supabase.from('products').update({ stock, in_stock: stock > 0 }).eq('id', id);
       if (error) throw error;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: queryKeys.products });
+      qc.invalidateQueries({ queryKey: ['products', 'stock'] });
+      qc.invalidateQueries({ queryKey: ['analytics'] });
+    },
+  });
+}
+
+export function useUpdateStock() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, stock }: { id: Id; stock: number }) => {
+      const { error } = await supabase.from('products').update({ stock, in_stock: stock > 0 }).eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.products });
+      qc.invalidateQueries({ queryKey: ['products', 'stock'] });
+      qc.invalidateQueries({ queryKey: ['analytics'] });
+    },
+  });
+}
+
+export function useUpdateDiscount() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, compare_at_price, old_price, tag }: { id: Id; compare_at_price: number | null; old_price: number | null; tag: string | null }) => {
+      const { error } = await supabase.from('products').update({ compare_at_price, old_price, tag }).eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.products });
+      qc.invalidateQueries({ queryKey: ['products', 'stock'] });
     },
   });
 }

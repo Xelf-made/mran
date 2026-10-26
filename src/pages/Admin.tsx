@@ -1,30 +1,37 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { BarChart3, Boxes, LayoutDashboard, LogOut, Package, ReceiptText, Settings, ShieldCheck, ShoppingBag, Users, X } from 'lucide-react';
+import { BarChart3, Boxes, ChevronLeft, LayoutDashboard, LogOut, Package, Percent, Settings, ShieldCheck, ShoppingBag, Users, X } from 'lucide-react';
 import { useAuth } from '@/contexts/useAuth';
 import { PageShell } from '@/components/PageShell';
 import { Orders } from '@/pages/admin/Orders';
 import { Products } from '@/pages/admin/Products';
+import { Stock } from '@/pages/admin/Stock';
+import { Discounts } from '@/pages/admin/Discounts';
 import { Customers } from '@/pages/admin/Customers';
 import { Analytics } from '@/pages/admin/Analytics';
 import { StoreSettings } from '@/pages/admin/StoreSettings';
 
-type AdminTab = 'orders' | 'products' | 'customers' | 'analytics' | 'settings';
+type AdminTab = 'orders' | 'products' | 'stock' | 'discounts' | 'customers' | 'analytics' | 'settings';
 
 interface TabMeta { id: AdminTab; label: string; icon: typeof Package; blurb: string }
 
 const TABS: TabMeta[] = [
   { id: 'orders', label: 'Orders', icon: ShoppingBag, blurb: 'Process and track customer orders' },
   { id: 'products', label: 'Products', icon: Package, blurb: 'Manage your catalog and inventory' },
+  { id: 'stock', label: 'Stock', icon: Boxes, blurb: 'Adjust inventory levels and availability' },
+  { id: 'discounts', label: 'Discounts', icon: Percent, blurb: 'Set compare-at pricing and promotions' },
   { id: 'customers', label: 'Customers', icon: Users, blurb: 'View customer profiles and history' },
   { id: 'analytics', label: 'Analytics', icon: BarChart3, blurb: 'Revenue, sales and stock insights' },
   { id: 'settings', label: 'Store Settings', icon: Settings, blurb: 'Configure payments and operations' },
 ];
 
+const MOBILE_TABS: AdminTab[] = ['orders', 'products', 'stock', 'analytics', 'settings'];
+
 export function AdminPage() {
   const { demoUser, user, isAdmin, signOut } = useAuth();
   const navigate = useNavigate();
   const [tab, setTab] = useState<AdminTab>('orders');
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const displayName = demoUser?.name ?? user?.email ?? 'Admin';
   const email = demoUser?.email ?? user?.email ?? '';
@@ -61,10 +68,13 @@ export function AdminPage() {
     );
   }
 
+  const selectTab = (id: AdminTab) => { setTab(id); setSidebarOpen(false); };
+
   return (
     <PageShell>
-      <div className="adm">
-        <aside className="adm__sidebar">
+      <div className={`adm ${sidebarOpen ? 'adm--sidebar-open' : ''}`}>
+        {sidebarOpen && <div className="adm__overlay" onClick={() => setSidebarOpen(false)} />}
+        <aside className={`adm__sidebar ${sidebarOpen ? 'adm__sidebar--mobile-open' : ''}`}>
           <div className="adm__brand">
             <span className="adm__brand-icon"><ShieldCheck size={22} /></span>
             <div>
@@ -79,7 +89,7 @@ export function AdminPage() {
               <button
                 key={item.id}
                 className={`adm__nav-item ${tab === item.id ? 'adm__nav-item--active' : ''}`}
-                onClick={() => setTab(item.id)}
+                onClick={() => selectTab(item.id)}
               >
                 <item.icon size={18} /> {item.label}
               </button>
@@ -104,6 +114,9 @@ export function AdminPage() {
         <main className="adm__main">
           <div className="adm__topbar">
             <div className="adm__topbar-left">
+              <button className="adm__sidebar-toggle" onClick={() => setSidebarOpen(!sidebarOpen)} aria-label="Toggle sidebar">
+                {sidebarOpen ? <X size={20} /> : <ChevronLeft size={20} />}
+              </button>
               <span className="adm__topbar-icon"><activeTab.icon size={20} /></span>
               <div>
                 <h1 className="adm__topbar-title">{activeTab.label}</h1>
@@ -119,27 +132,22 @@ export function AdminPage() {
           <div className="adm__content">
             {tab === 'orders' && <Orders />}
             {tab === 'products' && <Products />}
+            {tab === 'stock' && <Stock />}
+            {tab === 'discounts' && <Discounts />}
             {tab === 'customers' && <Customers />}
             {tab === 'analytics' && <Analytics />}
             {tab === 'settings' && <StoreSettings />}
           </div>
 
           <div className="adm__bottom-bar">
-            <button className="adm__bottom-tab" onClick={() => setTab('orders')}>
-              <ShoppingBag size={18} /><span>Orders</span>
-            </button>
-            <button className="adm__bottom-tab" onClick={() => setTab('products')}>
-              <Package size={18} /><span>Products</span>
-            </button>
-            <button className="adm__bottom-tab" onClick={() => setTab('customers')}>
-              <Users size={18} /><span>Customers</span>
-            </button>
-            <button className="adm__bottom-tab" onClick={() => setTab('analytics')}>
-              <BarChart3 size={18} /><span>Analytics</span>
-            </button>
-            <button className="adm__bottom-tab" onClick={() => setTab('settings')}>
-              <Settings size={18} /><span>Settings</span>
-            </button>
+            {MOBILE_TABS.map((id) => {
+              const meta = TABS.find((t) => t.id === id)!;
+              return (
+                <button key={id} className={`adm__bottom-tab ${tab === id ? 'adm__bottom-tab--active' : ''}`} onClick={() => selectTab(id)}>
+                  <meta.icon size={18} /><span>{meta.label}</span>
+                </button>
+              );
+            })}
           </div>
         </main>
       </div>

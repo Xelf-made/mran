@@ -15,7 +15,7 @@ export function Analytics() {
   if (isLoading) return <div className="track-loading"><BarChart3 className="spin" size={36} /><p>Loading analytics…</p></div>;
 
   const orders: AdminOrder[] = data?.orders ?? [];
-  const products: Pick<AdminProduct, 'id' | 'name' | 'stock' | 'sales'>[] = data?.products ?? [];
+  const products: Pick<AdminProduct, 'id' | 'name' | 'stock' | 'sales' | 'price' | 'compare_at_price' | 'old_price' | 'image' | 'category' | 'brand'>[] = data?.products ?? [];
   const customers: number = data?.customerCount ?? 0;
 
   const now = new Date();

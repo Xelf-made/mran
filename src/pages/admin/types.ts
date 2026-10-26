@@ -23,6 +23,7 @@ export interface AdminProduct {
   category: string;
   price: number;
   old_price: number | null;
+  compare_at_price: number | null;
   rating: number;
   reviews: number;
   image: string;
@@ -56,6 +57,8 @@ export interface StoreSettings {
   free_delivery_threshold: number;
   delivery_fee: number;
   currency: string;
+  store_hours: string | null;
+  mpesa_shortcode: string | null;
   order_notifications: boolean;
   low_stock_alerts: boolean;
   auto_confirm_orders: boolean;

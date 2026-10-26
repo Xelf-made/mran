@@ -62,6 +62,7 @@ export function StoreSettings() {
         <label className="auth__field"><span>Contact phone</span><div className="auth__input-wrap"><input type="tel" value={current.store_phone} onChange={(e) => set('store_phone', e.target.value)} /></div></label>
       </div>
       <label className="auth__field"><span>Store address</span><div className="auth__input-wrap"><input type="text" value={current.store_address} onChange={(e) => set('store_address', e.target.value)} /></div></label>
+      <label className="auth__field"><span>Store hours</span><div className="auth__input-wrap"><input type="text" value={current.store_hours ?? ''} onChange={(e) => set('store_hours', e.target.value)} placeholder="e.g. Mon–Sun, 24/7" /></div></label>
 
       <div className="account__divider" />
       <h3>Delivery & payments</h3>
@@ -72,6 +73,7 @@ export function StoreSettings() {
 
       <div className="account__notif-list">
         <div className="account__notif-item"><div><strong>M-Pesa Express</strong><span>Accept M-Pesa STK push payments</span></div><button type="button" className={`toggle-switch ${current.enable_mpesa ? 'toggle-switch--on' : ''}`} onClick={() => set('enable_mpesa', !current.enable_mpesa)}><span className="toggle-switch__knob" /></button></div>
+        {current.enable_mpesa && <label className="auth__field"><span>M-Pesa shortcode</span><div className="auth__input-wrap"><input type="text" value={current.mpesa_shortcode ?? ''} onChange={(e) => set('mpesa_shortcode', e.target.value)} placeholder="e.g. 174379" /></div></label>}
         <div className="account__notif-item"><div><strong>Card payments</strong><span>Accept Visa and Mastercard</span></div><button type="button" className={`toggle-switch ${current.enable_card ? 'toggle-switch--on' : ''}`} onClick={() => set('enable_card', !current.enable_card)}><span className="toggle-switch__knob" /></button></div>
         <div className="account__notif-item"><div><strong>Cash on delivery</strong><span>Allow customers to pay on arrival</span></div><button type="button" className={`toggle-switch ${current.enable_cod ? 'toggle-switch--on' : ''}`} onClick={() => set('enable_cod', !current.enable_cod)}><span className="toggle-switch__knob" /></button></div>
         <div className="account__notif-item"><div><strong>Guest checkout</strong><span>Allow orders without an account</span></div><button type="button" className={`toggle-switch ${current.enable_guest_checkout ? 'toggle-switch--on' : ''}`} onClick={() => set('enable_guest_checkout', !current.enable_guest_checkout)}><span className="toggle-switch__knob" /></button></div>
