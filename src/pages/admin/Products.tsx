@@ -133,6 +133,36 @@ export function Products() {
   );
 }
 
+const BUCKET = 'product-images';
+
+async function uploadProductImage(file: File): Promise<string> {
+  const { data: session } = await supabase.auth.getSession();
+  if (!session.session) {
+    throw new Error('You must be signed in to upload images.');
+  }
+  const ext = (file.name.split('.').pop() ?? 'jpg').toLowerCase();
+  const safeExt = /^[a-z0-9]+$/.test(ext) ? ext : 'jpg';
+  const fileName = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}.${safeExt}`;
+
+  const { error: upErr } = await supabase.storage
+    .from(BUCKET)
+    .upload(fileName, file, { cacheControl: '3600', upsert: true });
+  if (upErr) {
+    console.error('[product-images] upload failed:', upErr.message, upErr.name);
+    if (upErr.message.includes('row-level security') || upErr.message.includes('policy')) {
+      throw new Error('Permission denied. Your account is not allowed to upload images.');
+    }
+    throw new Error(`Upload failed: ${upErr.message}`);
+  }
+
+  const { data } = supabase.storage.from(BUCKET).getPublicUrl(fileName);
+  if (!data?.publicUrl) {
+    console.error('[product-images] getPublicUrl returned no URL for', fileName);
+    throw new Error('Could not retrieve the image URL after upload.');
+  }
+  return data.publicUrl;
+}
+
 function ImageUploader({ currentUrl, onUploaded }: { currentUrl: string; onUploaded: (url: string) => void }) {
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -142,14 +172,11 @@ function ImageUploader({ currentUrl, onUploaded }: { currentUrl: string; onUploa
     setError(null);
     setUploading(true);
     try {
-      const ext = file.name.split('.').pop() ?? 'jpg';
-      const fileName = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
-      const { error: upErr } = await supabase.storage.from('product-images').upload(fileName, file, { cacheControl: '3600', upsert: false });
-      if (upErr) throw upErr;
-      const { data } = supabase.storage.from('product-images').getPublicUrl(fileName);
-      onUploaded(data.publicUrl);
-    } catch {
-      setError('Upload failed. Please try again.');
+      onUploaded(await uploadProductImage(file));
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Upload failed. Please try again.';
+      console.error('[ImageUploader]', msg);
+      setError(msg);
     }
     setUploading(false);
   };
@@ -193,14 +220,12 @@ function GalleryUploader({ images, onChange }: { images: string[]; onChange: (im
     setError(null);
     setUploading(true);
     try {
-      const ext = file.name.split('.').pop() ?? 'jpg';
-      const fileName = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
-      const { error: upErr } = await supabase.storage.from('product-images').upload(fileName, file, { cacheControl: '3600', upsert: false });
-      if (upErr) throw upErr;
-      const { data } = supabase.storage.from('product-images').getPublicUrl(fileName);
-      onChange([...images, data.publicUrl]);
-    } catch {
-      setError('Upload failed. Please try again.');
+      const url = await uploadProductImage(file);
+      onChange([...images, url]);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Upload failed. Please try again.';
+      console.error('[GalleryUploader]', msg);
+      setError(msg);
     }
     setUploading(false);
   };
