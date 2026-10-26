@@ -1,10 +1,10 @@
 import { useRef, useState } from 'react';
 import { Check, Clock, FileText, Upload, X } from 'lucide-react';
 import { useAuth } from '@/contexts/useAuth';
-import { useCustomerPrescriptions, useUploadPrescription, type PrescriptionStatus } from '@/lib/queries';
+import { useCustomerPrescriptions, useDemoCustomerPrescriptions, useUploadPrescription, type PrescriptionStatus } from '@/lib/queries';
 import { useCustomerPrescriptionRealtime } from '@/lib/usePrescriptionsRealtime';
 import { useToast } from '@/components/Toast';
-import { supabase } from '@/lib/supabase';
+
 
 const statusConfig: Record<PrescriptionStatus, { label: string; cls: string; icon: typeof Clock }> = {
   pending: { label: 'Pending review', cls: 'rx-status--pending', icon: Clock },
@@ -28,7 +28,8 @@ export function Prescriptions() {
 
   const userId = user?.id ?? '';
   const isDemo = Boolean(demoUser);
-  const { data: prescriptions, isLoading, error } = useCustomerPrescriptions(userId);
+  const { data: realPrescriptions, isLoading, error } = useCustomerPrescriptions(userId);
+  const { data: demoPrescriptions } = useDemoCustomerPrescriptions();
   const uploadMutation = useUploadPrescription();
 
   useCustomerPrescriptionRealtime(userId);
@@ -60,7 +61,7 @@ export function Prescriptions() {
     if (file) handleFile(file);
   };
 
-  const list = prescriptions ?? [];
+  const list = isDemo ? (demoPrescriptions ?? []) : (realPrescriptions ?? []);
 
   if (!isDemo && isLoading) return <div className="track-loading"><FileText className="spin" size={36} /><p>Loading prescriptions…</p></div>;
 

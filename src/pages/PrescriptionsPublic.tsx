@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { AlertCircle, ArrowRight, Check, Clock, Download, FileText, History, Lock, Pill, RotateCcw, ShieldCheck, Stethoscope, Upload, X } from 'lucide-react';
 import { PageShell } from '@/components/PageShell';
 import { useAuth } from '@/contexts/useAuth';
-import { useCustomerPrescriptions, useUploadPrescription, type PrescriptionStatus } from '@/lib/queries';
+import { useCustomerPrescriptions, useDemoCustomerPrescriptions, useUploadPrescription, type PrescriptionStatus } from '@/lib/queries';
 import { useCustomerPrescriptionRealtime } from '@/lib/usePrescriptionsRealtime';
 import { useToast } from '@/components/Toast';
 
@@ -41,12 +41,13 @@ export function PrescriptionsPage() {
   const isLoggedIn = Boolean(user || demoUser);
   const isDemo = Boolean(demoUser);
   const userId = user?.id ?? '';
-  const { data: prescriptions, isLoading, error } = useCustomerPrescriptions(userId);
+  const { data: realPrescriptions, isLoading, error } = useCustomerPrescriptions(userId);
+  const { data: demoPrescriptions } = useDemoCustomerPrescriptions();
   const uploadMutation = useUploadPrescription();
 
   useCustomerPrescriptionRealtime(userId);
 
-  const list = prescriptions ?? [];
+  const list = isDemo ? (demoPrescriptions ?? []) : (realPrescriptions ?? []);
   const pendingCount = list.filter((rx) => rx.status === 'pending').length;
   const approvedCount = list.filter((rx) => rx.status === 'approved').length;
   const notesRx = list.find((rx) => rx.id === notesRxId);
@@ -58,8 +59,8 @@ export function PrescriptionsPage() {
   };
 
   const handleFile = async (file: File) => {
-    if (!userId) {
-      showToast('error', 'Please sign in to upload a prescription.');
+    if (!userId || isDemo) {
+      showToast('error', 'Demo mode — please sign up for a real account to upload prescriptions.');
       return;
     }
     const validationError = validateFile(file);
@@ -198,7 +199,57 @@ export function PrescriptionsPage() {
                   )}
 
                   {isDemo ? (
-                    <div className="account__demo-banner"><Check size={16} /> Demo mode — prescription history requires a real account.</div>
+                    <div className="rx-table-wrap">
+                      <table className="rx-table">
+                        <thead>
+                          <tr>
+                            <th>Document</th>
+                            <th>Status</th>
+                            <th>Submitted</th>
+                            <th>Notes</th>
+                            <th>Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {list.map((rx) => {
+                            const cfg = statusConfig[rx.status];
+                            const StatusIcon = cfg.icon;
+                            return (
+                              <tr key={rx.id}>
+                                <td>
+                                  <div className="rx-table__doc">
+                                    <FileText size={16} />
+                                    <span>{rx.file_name || 'Prescription'}</span>
+                                  </div>
+                                </td>
+                                <td>
+                                  <span className={`rx-badge ${cfg.cls}`}>
+                                    <StatusIcon size={13} /> {cfg.label}
+                                  </span>
+                                </td>
+                                <td className="rx-table__date">{formatDateTime(rx.created_at)}</td>
+                                <td>
+                                  {rx.pharmacist_notes ? (
+                                    <button className="rx-table__notes-btn" onClick={() => setNotesRxId(rx.id)}>
+                                      <FileText size={13} /> View note
+                                    </button>
+                                  ) : (
+                                    <span className="rx-table__no-notes">—</span>
+                                  )}
+                                </td>
+                                <td>
+                                  <div className="rx-table__actions">
+                                    <button className="btn btn--outline btn--sm" onClick={() => { setViewerUrl(fileUrl(rx.file_url)); setViewerName(rx.file_name || 'Prescription'); }}>
+                                      View
+                                    </button>
+                                  </div>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
                   ) : isLoading ? (
                     <div className="track-loading"><FileText className="spin" size={28} /><p>Loading prescriptions…</p></div>
                   ) : error ? (

@@ -86,3 +86,46 @@ export function getDemoPendingPrescriptions(): Prescription[] {
 export function getDemoReviewedPrescriptions(): Prescription[] {
   return demoPrescriptions.filter((rx) => rx.status !== 'pending');
 }
+
+const demoCustomerRx: Prescription[] = [
+  {
+    id: 'demo-cust-rx-1',
+    user_id: 'demo-customer',
+    file_url: 'https://images.unsplash.com/photo-1631549916768-4119b2e5f926?w=800',
+    file_name: 'my_prescription.jpg',
+    status: 'pending',
+    pharmacist_notes: null,
+    reviewed_by: null,
+    created_at: hoursAgo(3),
+    updated_at: hoursAgo(3),
+    profile: null,
+  },
+  {
+    id: 'demo-cust-rx-2',
+    user_id: 'demo-customer',
+    file_url: 'https://images.unsplash.com/photo-1607619056574-7b8d3ee536b2?w=800',
+    file_name: 'amoxicillin_script.jpg',
+    status: 'approved',
+    pharmacist_notes: 'Approved — Amoxicillin 500mg, 1 capsule three times daily for 7 days. Dosage verified.',
+    reviewed_by: 'demo-pharmacist',
+    created_at: daysAgo(2),
+    updated_at: daysAgo(2),
+    profile: null,
+  },
+  {
+    id: 'demo-cust-rx-3',
+    user_id: 'demo-customer',
+    file_url: 'https://images.unsplash.com/photo-1587854692152-cbe660dbde88?w=800',
+    file_name: 'blurred_script.jpg',
+    status: 'rejected',
+    pharmacist_notes: 'Rejected — prescription is illegible. Please upload a clearer photo of the script.',
+    reviewed_by: 'demo-pharmacist',
+    created_at: daysAgo(3),
+    updated_at: daysAgo(3),
+    profile: null,
+  },
+];
+
+export function getDemoCustomerPrescriptions(): Prescription[] {
+  return [...demoCustomerRx];
+}

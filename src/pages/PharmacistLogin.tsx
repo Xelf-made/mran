@@ -48,9 +48,13 @@ export function PharmacistLoginPage() {
     setLoading(false);
   };
 
-  const fillDemo = (type: 'pharmacist' | 'admin') => {
-    if (type === 'admin') { setEmail('admin@moran.co.ke'); setPassword('demo1234'); }
-    else { setEmail('pharmacist@moran.co.ke'); setPassword('demo1234'); }
+  const signInDemo = async (type: 'pharmacist' | 'admin') => {
+    setError(null);
+    setLoading(true);
+    const demoEmail = type === 'admin' ? 'admin@moran.co.ke' : 'pharmacist@moran.co.ke';
+    const { error: signInError } = await signIn(demoEmail, 'demo1234');
+    if (signInError) { setError(signInError); setLoading(false); return; }
+    navigate('/pharmacist');
   };
 
   return (
@@ -67,10 +71,10 @@ export function PharmacistLoginPage() {
             <div className="auth__admin-note"><ShieldCheck size={18} /> Pharmacist accounts are provisioned by the Moran Pharmacy team. Only licensed staff can access this portal.</div>
 
             <div className="auth__demo-box">
-              <div className="auth__demo-head"><Zap size={16} /> <span>Demo accounts — click to auto-fill</span></div>
+              <div className="auth__demo-head"><Zap size={16} /> <span>Demo accounts — click to sign in instantly</span></div>
               <div className="auth__demo-buttons">
-                <button type="button" className="auth__demo-btn" onClick={() => fillDemo('pharmacist')}><Stethoscope size={15} /> <span><strong>Pharmacist</strong><small>pharmacist@moran.co.ke</small></span></button>
-                <button type="button" className="auth__demo-btn" onClick={() => fillDemo('admin')}><ShieldCheck size={15} /> <span><strong>Admin</strong><small>admin@moran.co.ke</small></span></button>
+                <button type="button" className="auth__demo-btn" onClick={() => signInDemo('pharmacist')}><Stethoscope size={15} /> <span><strong>Pharmacist</strong><small>pharmacist@moran.co.ke</small></span></button>
+                <button type="button" className="auth__demo-btn" onClick={() => signInDemo('admin')}><ShieldCheck size={15} /> <span><strong>Admin</strong><small>admin@moran.co.ke</small></span></button>
               </div>
               <div className="auth__demo-pwd">Password for both: <code>demo1234</code></div>
             </div>

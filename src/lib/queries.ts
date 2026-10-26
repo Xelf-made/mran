@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from './supabase';
 import type { AdminOrder, AdminProduct, AdminCustomer, StoreSettings as StoreSettingsType } from '@/pages/admin/types';
+import { getDemoCustomerPrescriptions } from '@/data/demoPrescriptions';
 
 export type Id = string | number;
 
@@ -602,6 +603,14 @@ export function useCustomerPrescriptions(userId: string) {
     },
     staleTime: 30 * 1000,
     enabled: validUser(userId),
+  });
+}
+
+export function useDemoCustomerPrescriptions() {
+  return useQuery({
+    queryKey: ['prescriptions', 'customer', 'demo'] as const,
+    queryFn: async () => getDemoCustomerPrescriptions(),
+    staleTime: Infinity,
   });
 }
 

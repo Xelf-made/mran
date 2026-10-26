@@ -30,9 +30,14 @@ export function AuthForm({ mode, adminMode }: { mode: 'login' | 'signup'; adminM
     }
   };
 
-  const fillDemo = (type: 'customer' | 'admin') => {
-    if (type === 'admin') { setEmail('admin@moran.co.ke'); setPassword('demo1234'); }
-    else { setEmail('customer@moran.co.ke'); setPassword('demo1234'); }
+  const signInDemo = async (type: 'customer' | 'admin') => {
+    setError(null);
+    setLoading(true);
+    const demoEmail = type === 'admin' ? 'admin@moran.co.ke' : 'customer@moran.co.ke';
+    const { error: signInError } = await signIn(demoEmail, 'demo1234');
+    if (signInError) { setError(signInError); setLoading(false); return; }
+    if (adminMode) { navigate('/admin'); return; }
+    navigate('/account');
   };
 
   return (
@@ -48,10 +53,10 @@ export function AuthForm({ mode, adminMode }: { mode: 'login' | 'signup'; adminM
 
         {mode === 'login' && (
           <div className="auth__demo-box">
-            <div className="auth__demo-head"><Zap size={16} /> <span>Demo accounts — click to auto-fill</span></div>
+            <div className="auth__demo-head"><Zap size={16} /> <span>Demo accounts — click to sign in instantly</span></div>
             <div className="auth__demo-buttons">
-              {!adminMode && <button type="button" className="auth__demo-btn" onClick={() => fillDemo('customer')}><User size={15} /> <span><strong>Customer</strong><small>customer@moran.co.ke</small></span></button>}
-              <button type="button" className="auth__demo-btn" onClick={() => fillDemo('admin')}><ShieldCheck size={15} /> <span><strong>Admin</strong><small>admin@moran.co.ke</small></span></button>
+              {!adminMode && <button type="button" className="auth__demo-btn" onClick={() => signInDemo('customer')}><User size={15} /> <span><strong>Customer</strong><small>customer@moran.co.ke</small></span></button>}
+              <button type="button" className="auth__demo-btn" onClick={() => signInDemo('admin')}><ShieldCheck size={15} /> <span><strong>Admin</strong><small>admin@moran.co.ke</small></span></button>
             </div>
             <div className="auth__demo-pwd">Password for both: <code>demo1234</code></div>
           </div>
