@@ -1,7 +1,4 @@
 # Moran Pharmacy
-
-An online pharmacy storefront and admin control center for a Nairobi-based pharmacy. Customers can browse products, upload prescriptions, track orders, and check out. Admins manage the full catalog, inventory, discounts, orders, customers, and store settings from a dedicated dashboard. A pharmacist portal handles prescription reviews.
-
 ## Features
 
 ### Storefront
