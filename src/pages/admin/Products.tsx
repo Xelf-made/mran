@@ -280,6 +280,8 @@ function ProductModal({ editing, form, setForm, saving, error, onClose, onSave }
     </label>
   );
 
+  const stockStatus = productStatus(form.stock);
+
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal" onClick={(e) => e.stopPropagation()}>
@@ -288,39 +290,50 @@ function ProductModal({ editing, form, setForm, saving, error, onClose, onSave }
           <button className="modal__close" onClick={onClose}><X size={20} /></button>
         </div>
         <form className="account__settings-form" onSubmit={onSave}>
-          {field('Product name', 'name', 'text', 'e.g. Amoxil 500mg')}
-          <div className="field-row">
-            {field('Brand', 'brand', 'text', 'e.g. MORAN PHARMACY')}
-            <label className="auth__field"><span>Category</span><div className="auth__input-wrap">
-              <select className="admin__select" value={form.category} onChange={(e) => setForm((prev) => ({ ...prev, category: e.target.value }))}>
-                {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
-              </select>
-            </div></label>
-          </div>
-          <div className="field-row">
+
+          <div className="form-section">
+            <h4 className="form-section__title"><Package size={16} /> Product details</h4>
+            {field('Product name', 'name', 'text', 'e.g. Amoxil 500mg')}
+            <div className="field-row">
+              {field('Brand', 'brand', 'text', 'e.g. MORAN PHARMACY')}
+              <label className="auth__field"><span>Category</span><div className="auth__input-wrap">
+                <select className="admin__select" value={form.category} onChange={(e) => setForm((prev) => ({ ...prev, category: e.target.value }))}>
+                  {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+                </select>
+              </div></label>
+            </div>
             {field('Price (KSh)', 'price', 'number')}
-            {field('Old price (KSh)', 'old_price', 'number')}
-          </div>
-          <div className="field-row">
-            {field('Stock', 'stock', 'number')}
-            {field('Sales', 'sales', 'number')}
-          </div>
-          <div className="field-row">
-            {field('Rating (0-5)', 'rating', 'number')}
-            {field('Reviews', 'reviews', 'number')}
-          </div>
-          <ImageUploader currentUrl={form.image} onUploaded={(url) => setForm((prev) => ({ ...prev, image: url }))} />
-          <GalleryUploader images={form.image_urls ?? []} onChange={(imgs) => setForm((prev) => ({ ...prev, image_urls: imgs }))} />
-          {field('Tag (optional)', 'tag', 'text', 'e.g. Best seller')}
-          {field('Description', 'description', 'text', 'Product description')}
-          <div className="account__notif-list">
-            <div className="account__notif-item"><div><strong>New product</strong><span>Show in new arrivals</span></div>
-              <button type="button" className={`toggle-switch ${form.is_new ? 'toggle-switch--on' : ''}`} onClick={() => setForm((prev) => ({ ...prev, is_new: !prev.is_new }))}><span className="toggle-switch__knob" /></button>
-            </div>
-            <div className="account__notif-item"><div><strong>Prescription required</strong><span>Pharmacist review before dispatch</span></div>
-              <button type="button" className={`toggle-switch ${form.prescription ? 'toggle-switch--on' : ''}`} onClick={() => setForm((prev) => ({ ...prev, prescription: !prev.prescription }))}><span className="toggle-switch__knob" /></button>
+            <ImageUploader currentUrl={form.image} onUploaded={(url) => setForm((prev) => ({ ...prev, image: url }))} />
+            <GalleryUploader images={form.image_urls ?? []} onChange={(imgs) => setForm((prev) => ({ ...prev, image_urls: imgs }))} />
+            {field('Tag (optional)', 'tag', 'text', 'e.g. Best seller')}
+            {field('Description', 'description', 'text', 'Product description')}
+            <div className="account__notif-list">
+              <div className="account__notif-item"><div><strong>New product</strong><span>Show in new arrivals</span></div>
+                <button type="button" className={`toggle-switch ${form.is_new ? 'toggle-switch--on' : ''}`} onClick={() => setForm((prev) => ({ ...prev, is_new: !prev.is_new }))}><span className="toggle-switch__knob" /></button>
+              </div>
+              <div className="account__notif-item"><div><strong>Prescription required</strong><span>Pharmacist review before dispatch</span></div>
+                <button type="button" className={`toggle-switch ${form.prescription ? 'toggle-switch--on' : ''}`} onClick={() => setForm((prev) => ({ ...prev, prescription: !prev.prescription }))}><span className="toggle-switch__knob" /></button>
+              </div>
             </div>
           </div>
+
+          <div className="form-section">
+            <h4 className="form-section__title"><Package size={16} /> Inventory & stock</h4>
+            {field('Stock quantity', 'stock', 'number', 'e.g. 50')}
+            <div className="form-section__status">
+              <span>Status:</span>
+              <span className={`order-status order-status--${stockStatus === 'in-stock' ? 'delivered' : stockStatus === 'low-stock' ? 'pending' : 'cancelled'}`}>
+                {stockStatus.replace('-', ' ')}
+              </span>
+            </div>
+          </div>
+
+          <div className="form-section">
+            <h4 className="form-section__title"><TrendingUp size={16} /> Discounts & offers</h4>
+            {field('Compare-at price (KSh)', 'old_price', 'number', 'Original price for sale display')}
+            <p className="form-section__hint">Set a compare-at price to show a discounted price with a strikethrough on the storefront.</p>
+          </div>
+
           {error && <div className="auth__error">{error}</div>}
           <div className="admin__settings-actions">
             <button type="submit" className="btn btn--primary" disabled={saving}>{saving ? 'Saving…' : 'Save product'}</button>

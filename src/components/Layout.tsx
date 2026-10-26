@@ -1,9 +1,11 @@
-import { useState, useRef, useEffect, type FormEvent } from 'react';
+import { useState, useRef, useEffect, useMemo, type FormEvent } from 'react';
 import { Link, NavLink, useNavigate } from 'react-router-dom';
 import { BadgeCheck, ChevronDown, LogOut, Menu, MessageCircle, Phone, Search, ShoppingBag, ShieldCheck, Stethoscope, Truck, User, X } from 'lucide-react';
 import { PharmacistModal } from '@/components/PharmacistModal';
 import { useCart } from '@/contexts/cart-context';
 import { useAuth } from '@/contexts/useAuth';
+import { useProductsCatalog } from '@/lib/queries';
+import { mapToProduct } from '@/lib/types';
 
 const shopCategories = [
   { label: 'Medicines', path: '/products?category=Medicines' },
@@ -21,6 +23,112 @@ const primaryNav = [
   { label: 'Offers', path: '/offers' },
 ];
 
+const priceFmt = (v: number) => `KSh ${v.toLocaleString()}`;
+
+function SearchBar({ onNavigate }: { onNavigate?: () => void }) {
+  const navigate = useNavigate();
+  const [query, setQuery] = useState('');
+  const [focused, setFocused] = useState(false);
+  const [activeIdx, setActiveIdx] = useState(-1);
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const { data: catalog } = useProductsCatalog();
+
+  const suggestions = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q || !catalog) return [];
+    return catalog
+      .filter((p) =>
+        p.name.toLowerCase().includes(q) ||
+        p.brand.toLowerCase().includes(q) ||
+        p.category.toLowerCase().includes(q),
+      )
+      .slice(0, 6)
+      .map(mapToProduct);
+  }, [query, catalog]);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) {
+        setFocused(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  useEffect(() => { setActiveIdx(-1); }, [query]);
+
+  const showDropdown = focused && query.trim().length > 0;
+
+  const submit = (event: FormEvent) => {
+    event.preventDefault();
+    if (showDropdown && activeIdx >= 0 && suggestions[activeIdx]) {
+      navigate(`/products/${suggestions[activeIdx].id}`);
+      setQuery('');
+      setFocused(false);
+      onNavigate?.();
+      return;
+    }
+    navigate(`/products${query.trim() ? `?q=${encodeURIComponent(query.trim())}` : ''}`);
+    setFocused(false);
+    onNavigate?.();
+  };
+
+  const pickSuggestion = (id: string) => {
+    navigate(`/products/${id}`);
+    setQuery('');
+    setFocused(false);
+    onNavigate?.();
+  };
+
+  const onKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (!showDropdown || suggestions.length === 0) return;
+    if (e.key === 'ArrowDown') { e.preventDefault(); setActiveIdx((i) => Math.min(i + 1, suggestions.length - 1)); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); setActiveIdx((i) => Math.max(i - 1, 0)); }
+    else if (e.key === 'Escape') { setFocused(false); }
+  };
+
+  return (
+    <div className={`header__search ${showDropdown ? 'header__search--focused' : ''}`} ref={wrapRef}>
+      <form onSubmit={submit} style={{ display: 'contents' }}>
+        <Search size={17} />
+        <input
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          onFocus={() => setFocused(true)}
+          onKeyDown={onKeyDown}
+          placeholder="Search medicines, symptoms or brands"
+          aria-label="Search products"
+        />
+      </form>
+      {showDropdown && (
+        <div className="search-suggestions">
+          {suggestions.length === 0 ? (
+            <div className="search-suggestions__hint">No products found for "{query.trim()}"</div>
+          ) : (
+            suggestions.map((p, idx) => (
+              <button
+                type="button"
+                key={p.id}
+                className={`search-suggestion ${idx === activeIdx ? 'search-suggestion--active' : ''}`}
+                onMouseEnter={() => setActiveIdx(idx)}
+                onClick={() => pickSuggestion(p.id)}
+              >
+                <img src={p.image} alt={p.name} className="search-suggestion__img" loading="lazy" />
+                <div className="search-suggestion__body">
+                  <span className="search-suggestion__name">{p.name}</span>
+                  <span className="search-suggestion__cat">{p.brand} · {p.category}</span>
+                </div>
+                <span className="search-suggestion__price">{priceFmt(p.price)}</span>
+              </button>
+            ))
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function Navbar() {
   const { count } = useCart();
   const { user, demoUser, isAdmin, isPharmacist, signOut } = useAuth();
@@ -28,7 +136,6 @@ export function Navbar() {
   const [shopOpen, setShopOpen] = useState(false);
   const [mobileShopOpen, setMobileShopOpen] = useState(false);
   const [pharmacistOpen, setPharmacistOpen] = useState(false);
-  const [query, setQuery] = useState('');
   const navigate = useNavigate();
   const shopRef = useRef<HTMLDivElement>(null);
 
@@ -40,11 +147,6 @@ export function Navbar() {
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
-  const submit = (event: FormEvent) => {
-    event.preventDefault();
-    navigate(`/products${query.trim() ? `?q=${encodeURIComponent(query.trim())}` : ''}`);
-    setOpen(false);
-  };
   const handleSignOut = async () => { await signOut(); navigate('/'); };
 
   return (
@@ -59,7 +161,7 @@ export function Navbar() {
         <div className="shell header__inner">
           <button className="header__burger" onClick={() => setOpen(!open)} aria-label="Menu">{open ? <X size={22} /> : <Menu size={22} />}</button>
           <Link to="/" className="logo" aria-label="Moran Pharmacy home"><img src="/WhatsApp_Image_2026-08-18_at_08.58.25.jpeg" alt="Moran Pharmacy" className="logo__img" /></Link>
-          <form className="header__search" onSubmit={submit}><Search size={17} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search medicines, symptoms or brands" aria-label="Search products" /></form>
+          <SearchBar />
           <div className="header__icons">
             <button className="icon-btn header__chat header__pharmacist-btn" onClick={() => setPharmacistOpen(true)}><MessageCircle size={19} /><span className="icon-btn__label">Ask a Pharmacist</span></button>
             {user || demoUser ? (<>
@@ -112,7 +214,7 @@ export function Navbar() {
         {/* Mobile navigation */}
         <nav className={`mobile-nav ${open ? 'mobile-nav--open' : ''}`}>
           <div className="shell mobile-nav__inner">
-            <form className="mobile-nav__search" onSubmit={submit}><Search size={17} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search medicines, symptoms or brands" aria-label="Search products" /></form>
+            <SearchBar onNavigate={() => setOpen(false)} />
 
             <button className="mobile-nav__expand" onClick={() => setMobileShopOpen(!mobileShopOpen)}>
               Shop <ChevronDown size={16} className={mobileShopOpen ? 'mobile-nav__chevron--up' : ''} />
