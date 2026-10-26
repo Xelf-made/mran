@@ -30,7 +30,7 @@ export const queryKeys = {
   rxProducts: ['products', 'rx'] as const,
 };
 
-const PRODUCT_CARD_COLUMNS = 'id, name, brand, category, price, old_price, rating, reviews, image, tag, is_new, prescription, stock';
+const PRODUCT_CARD_COLUMNS = 'id, name, brand, category, price, old_price, rating, reviews, image, image_urls, tag, is_new, prescription, stock';
 const PRODUCT_ADMIN_COLUMNS = `${PRODUCT_CARD_COLUMNS}, sales, description`;
 const PRODUCT_DETAIL_COLUMNS = `${PRODUCT_ADMIN_COLUMNS}`;
 const PRODUCT_STOCK_COLUMNS = 'id, name, stock, sales';
@@ -43,7 +43,7 @@ const ADDRESS_COLUMNS = 'id, user_id, label, name, phone, line1, area, city, is_
 const PAYMENT_COLUMNS = 'id, user_id, type, label, detail, is_default, created_at';
 const WISHLIST_COLUMNS = 'id, user_id, product_id, created_at';
 const PRESCRIPTION_COLUMNS = 'id, user_id, file_url, file_name, status, pharmacist_notes, reviewed_by, created_at, updated_at';
-const RX_PRODUCT_COLUMNS = 'id, name, brand, category, price, image, stock, prescription, description';
+const RX_PRODUCT_COLUMNS = 'id, name, brand, category, price, image, image_urls, stock, prescription, description';
 
 export function useProductsCatalog() {
   return useQuery({
@@ -231,7 +231,7 @@ export function useSaveProduct() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ editing, payload }: { editing: AdminProduct | null; payload: Omit<AdminProduct, 'id'> }) => {
-      const cleanPayload = { ...payload, old_price: payload.old_price || null, tag: payload.tag || null };
+      const cleanPayload = { ...payload, old_price: payload.old_price || null, tag: payload.tag || null, image_urls: payload.image_urls && payload.image_urls.length > 0 ? payload.image_urls : null };
       if (editing) {
         const { error } = await supabase.from('products').update(cleanPayload).eq('id', editing.id);
         if (error) throw error;

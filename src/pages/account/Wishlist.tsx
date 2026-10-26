@@ -55,6 +55,7 @@ export function Wishlist() {
       rating: item.rating,
       reviews: 0,
       image: item.image,
+      images: [item.image],
       tag: null,
       isNew: false,
       description: '',

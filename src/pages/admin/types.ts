@@ -26,6 +26,7 @@ export interface AdminProduct {
   rating: number;
   reviews: number;
   image: string;
+  image_urls: string[] | null;
   tag: string | null;
   is_new: boolean;
   prescription: boolean;

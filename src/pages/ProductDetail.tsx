@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, ArrowRight, BadgeCheck, Check, Lock, Minus, Package, Plus, RefreshCw, ShieldCheck, ShoppingBag, Truck, Upload } from 'lucide-react';
 import { Button, Stars } from '@/components/ProductCard';
@@ -22,6 +22,7 @@ export function ProductDetail() {
   const showToast = useToast();
   const navigate = useNavigate();
   const [quantity, setQuantity] = useState(1);
+  const [activeImage, setActiveImage] = useState(0);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const product: Product | undefined = useMemo(() => {
@@ -36,6 +37,16 @@ export function ProductDetail() {
       .slice(0, 4)
       .map(mapToProduct);
   }, [catalog, product]);
+
+  const galleryImages = useMemo(() => {
+    if (!product) return [];
+    const imgs = product.images.length > 0 ? product.images : [product.image];
+    return imgs.filter(Boolean);
+  }, [product]);
+
+  useEffect(() => {
+    setActiveImage(0);
+  }, [product?.id]);
 
   const userId = user?.id ?? demoUser?.id ?? '';
   const isRx = Boolean(product?.prescription);
@@ -89,15 +100,31 @@ export function ProductDetail() {
         <button className="back-link" onClick={() => navigate(-1)}><ArrowLeft size={15} /> Back</button>
         <div className="detail__grid">
           <div className={`detail__media ${isLocked ? 'detail__media--locked' : ''}`}>
-            <img src={product.image} alt={product.name} />
-            {isLocked && (
-              <div className="detail__lock-overlay">
-                <Lock size={36} />
-                <span>Prescription Required</span>
-                <input ref={fileRef} type="file" accept="image/*,application/pdf" onChange={onFileChange} hidden />
-                <button type="button" className="detail__lock-upload" onClick={() => fileRef.current?.click()}>
-                  {uploading ? 'Uploading…' : <><Upload size={16} /> Upload Prescription</>}
-                </button>
+            <div className="detail__gallery-main">
+              <img src={galleryImages[activeImage] ?? product.image} alt={product.name} />
+              {isLocked && (
+                <div className="detail__lock-overlay">
+                  <Lock size={36} />
+                  <span>Prescription Required</span>
+                  <input ref={fileRef} type="file" accept="image/*,application/pdf" onChange={onFileChange} hidden />
+                  <button type="button" className="detail__lock-upload" onClick={() => fileRef.current?.click()}>
+                    {uploading ? 'Uploading…' : <><Upload size={16} /> Upload Prescription</>}
+                  </button>
+                </div>
+              )}
+            </div>
+            {galleryImages.length > 1 && (
+              <div className="detail__thumbs">
+                {galleryImages.map((img, idx) => (
+                  <button
+                    key={idx}
+                    className={`detail__thumb ${idx === activeImage ? 'detail__thumb--active' : ''}`}
+                    onClick={() => setActiveImage(idx)}
+                    type="button"
+                  >
+                    <img src={img} alt={`${product.name} view ${idx + 1}`} />
+                  </button>
+                ))}
               </div>
             )}
           </div>

@@ -12,6 +12,7 @@ export interface Product {
   rating: number;
   reviews: number;
   image: string;
+  images: string[];
   tag: string | null;
   isNew: boolean;
   description: string;
@@ -29,6 +30,10 @@ export function mapToProduct(row: AdminProduct): Product {
     rating: row.rating,
     reviews: row.reviews,
     image: row.image,
+    images: [
+      row.image,
+      ...(row.image_urls ?? []),
+    ].filter(Boolean),
     tag: row.tag,
     isNew: row.is_new,
     description: row.description,

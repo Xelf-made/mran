@@ -10,7 +10,7 @@ const PAGE_SIZE = 20;
 
 const emptyForm: Omit<AdminProduct, 'id'> = {
   name: '', brand: '', category: 'Medicines', price: 0, old_price: null,
-  rating: 0, reviews: 0, image: '', tag: null, is_new: false,
+  rating: 0, reviews: 0, image: '', image_urls: null, tag: null, is_new: false,
   prescription: false, stock: 0, sales: 0, description: '',
 };
 
@@ -35,7 +35,7 @@ export function Products() {
   const openAdd = () => { setEditing(null); setForm(emptyForm); setModalOpen(true); };
   const openEdit = (p: AdminProduct) => {
     setEditing(p);
-    setForm({ name: p.name, brand: p.brand, category: p.category, price: p.price, old_price: p.old_price, rating: p.rating, reviews: p.reviews, image: p.image, tag: p.tag, is_new: p.is_new, prescription: p.prescription, stock: p.stock, sales: p.sales, description: p.description });
+    setForm({ name: p.name, brand: p.brand, category: p.category, price: p.price, old_price: p.old_price, rating: p.rating, reviews: p.reviews, image: p.image, image_urls: p.image_urls, tag: p.tag, is_new: p.is_new, prescription: p.prescription, stock: p.stock, sales: p.sales, description: p.description });
     setModalOpen(true);
   };
 
@@ -184,6 +184,58 @@ function ImageUploader({ currentUrl, onUploaded }: { currentUrl: string; onUploa
   );
 }
 
+function GalleryUploader({ images, onChange }: { images: string[]; onChange: (imgs: string[]) => void }) {
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const handleFile = async (file: File) => {
+    setError(null);
+    setUploading(true);
+    try {
+      const ext = file.name.split('.').pop() ?? 'jpg';
+      const fileName = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+      const { error: upErr } = await supabase.storage.from('product-images').upload(fileName, file, { cacheControl: '3600', upsert: false });
+      if (upErr) throw upErr;
+      const { data } = supabase.storage.from('product-images').getPublicUrl(fileName);
+      onChange([...images, data.publicUrl]);
+    } catch {
+      setError('Upload failed. Please try again.');
+    }
+    setUploading(false);
+  };
+
+  const onChangeFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) handleFile(file);
+    e.target.value = '';
+  };
+
+  const removeAt = (idx: number) => onChange(images.filter((_, i) => i !== idx));
+
+  return (
+    <label className="auth__field">
+      <span>Gallery images (optional)</span>
+      <div className="gallery-uploader">
+        <div className="gallery-uploader__grid">
+          {images.map((url, idx) => (
+            <div key={idx} className="gallery-uploader__thumb">
+              <img src={url} alt={`Gallery ${idx + 1}`} />
+              <button type="button" className="gallery-uploader__remove" onClick={() => removeAt(idx)}><X size={13} /></button>
+            </div>
+          ))}
+          <button type="button" className="gallery-uploader__add" onClick={() => inputRef.current?.click()}>
+            {uploading ? <Loader2 size={20} className="spin" /> : <Plus size={20} />}
+            <span>{uploading ? 'Uploading…' : 'Add image'}</span>
+          </button>
+        </div>
+        <input ref={inputRef} type="file" accept="image/*" onChange={onChangeFile} hidden />
+        {error && <span className="image-uploader__error">{error}</span>}
+      </div>
+    </label>
+  );
+}
+
 function ProductModal({ editing, form, setForm, saving, error, onClose, onSave }: {
   editing: AdminProduct | null;
   form: Omit<AdminProduct, 'id'>;
@@ -233,6 +285,7 @@ function ProductModal({ editing, form, setForm, saving, error, onClose, onSave }
             {field('Reviews', 'reviews', 'number')}
           </div>
           <ImageUploader currentUrl={form.image} onUploaded={(url) => setForm((prev) => ({ ...prev, image: url }))} />
+          <GalleryUploader images={form.image_urls ?? []} onChange={(imgs) => setForm((prev) => ({ ...prev, image_urls: imgs }))} />
           {field('Tag (optional)', 'tag', 'text', 'e.g. Best seller')}
           {field('Description', 'description', 'text', 'Product description')}
           <div className="account__notif-list">
